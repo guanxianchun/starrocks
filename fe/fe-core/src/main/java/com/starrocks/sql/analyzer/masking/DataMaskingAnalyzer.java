@@ -15,6 +15,7 @@
 package com.starrocks.sql.analyzer.masking;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.starrocks.analysis.Expr;
 import com.starrocks.catalog.Column;
 import com.starrocks.sql.analyzer.Field;
@@ -50,7 +51,7 @@ public class DataMaskingAnalyzer {
         QueryRelation queryRelation = stmt.getQueryRelation();
         ColumnNode root = new ColumnNode();
         visitRelation(queryRelation, root);
-        System.out.println(JSON.toJSONString(root));
+        System.out.println(JSON.toJSONString(root, SerializerFeature.PrettyFormat));
     }
 
     protected void visitRelation(Relation relation, ColumnNode parent) {
@@ -75,7 +76,7 @@ public class DataMaskingAnalyzer {
         Map<Field, Column> columns = tableRelation.getColumns();
         for (Map.Entry<Field, Column> entry : columns.entrySet()) {
             Field field = entry.getKey();
-            if (ColumnUtils.columnEquals(parent, field)) {
+            if (!ColumnUtils.columnEquals(parent, field)) {
                 continue;
             }
             ColumnNode columnNode = ColumnUtils.buildColumnNode(field, tableRelation.getName(), null, true);
