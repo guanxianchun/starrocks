@@ -1,10 +1,34 @@
+// Copyright 2021-present StarRocks, Inc. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package com.starrocks.sql.analyzer.masking;
 
 import com.alibaba.fastjson.JSON;
 import com.starrocks.analysis.Expr;
 import com.starrocks.catalog.Column;
 import com.starrocks.sql.analyzer.Field;
-import com.starrocks.sql.ast.*;
+import com.starrocks.sql.ast.CTERelation;
+import com.starrocks.sql.ast.JoinRelation;
+import com.starrocks.sql.ast.QueryRelation;
+import com.starrocks.sql.ast.QueryStatement;
+import com.starrocks.sql.ast.Relation;
+import com.starrocks.sql.ast.SelectListItem;
+import com.starrocks.sql.ast.SelectRelation;
+import com.starrocks.sql.ast.SubqueryRelation;
+import com.starrocks.sql.ast.TableRelation;
+import com.starrocks.sql.ast.UnionRelation;
+import com.starrocks.sql.ast.ViewRelation;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
@@ -31,19 +55,19 @@ public class DataMaskingAnalyzer {
 
     protected void visitRelation(Relation relation, ColumnNode parent) {
         if (relation instanceof SelectRelation) {
-            handleSelectRelation((SelectRelation)relation, parent);
+            handleSelectRelation((SelectRelation) relation, parent);
         } else if (relation instanceof SubqueryRelation) {
-            handleSubQueryRelation((SubqueryRelation)relation, parent);
+            handleSubQueryRelation((SubqueryRelation) relation, parent);
         } else if (relation instanceof CTERelation) {
-            handleCTERelation((CTERelation)relation, parent);
+            handleCTERelation((CTERelation) relation, parent);
         } else if (relation instanceof JoinRelation) {
-            handleJoinRelation((JoinRelation)relation, parent);
+            handleJoinRelation((JoinRelation) relation, parent);
         } else if (relation instanceof ViewRelation) {
-            handleViewRelation((ViewRelation)relation, parent);
+            handleViewRelation((ViewRelation) relation, parent);
         } else if (relation instanceof UnionRelation) {
-            handleUnionRelation((UnionRelation)relation, parent);
+            handleUnionRelation((UnionRelation) relation, parent);
         } else if (relation instanceof TableRelation) {
-            handleTableRelation((TableRelation)relation, parent);
+            handleTableRelation((TableRelation) relation, parent);
         }
     }
 
@@ -51,7 +75,9 @@ public class DataMaskingAnalyzer {
         Map<Field, Column> columns = tableRelation.getColumns();
         for (Map.Entry<Field, Column> entry : columns.entrySet()) {
             Field field = entry.getKey();
-            if (ColumnUtils.columnEquals(parent, field)) continue;
+            if (ColumnUtils.columnEquals(parent, field)) {
+                continue;
+            }
             ColumnNode columnNode = ColumnUtils.buildColumnNode(field, tableRelation.getName(), null, true);
             parent.addColumnNode(columnNode);
         }
@@ -64,13 +90,13 @@ public class DataMaskingAnalyzer {
             for (QueryRelation queryRelation : relations) {
                 visitRelation(queryRelation, parent);
             }
-        }else {
+        } else {
             List<String> columnOutputNames = unionRelation.getColumnOutputNames();
             String tableName = ColumnUtils.getTableFieldByType(TableFieldType.TBL, unionRelation.getAlias());
-            for (String columnName: columnOutputNames) {
+            for (String columnName : columnOutputNames) {
                 ColumnNode columnNode = new ColumnNode().setName(columnName).setTableName(tableName);
                 parent.addColumnNode(columnNode);
-                for (QueryRelation queryRelation: relations) {
+                for (QueryRelation queryRelation : relations) {
                     visitRelation(queryRelation, parent);
                 }
             }
@@ -114,7 +140,7 @@ public class DataMaskingAnalyzer {
         Relation subRelation = selectRelation.getRelation();
         if (isSelectItemsEmpty(items)) {
             visitRelation(subRelation, parent);
-        }else {
+        } else {
             handleSelectItems(subRelation, items, parent);
         }
         parent.refreshDataMasking();
@@ -134,7 +160,7 @@ public class DataMaskingAnalyzer {
                 parent.addColumnNodes(columnNodes);
                 visitChildren(subRelation, columnNodes);
             }
-        }else {
+        } else {
             SelectListItem item = getSelectItem(items, parent);
             if (Objects.isNull(item)) {
                 visitRelation(subRelation, parent);

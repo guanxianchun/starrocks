@@ -1,7 +1,27 @@
+// Copyright 2021-present StarRocks, Inc. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package com.starrocks.sql.analyzer.masking;
 
 import com.google.common.base.Joiner;
-import com.starrocks.analysis.*;
+import com.starrocks.analysis.ArithmeticExpr;
+import com.starrocks.analysis.CastExpr;
+import com.starrocks.analysis.Expr;
+import com.starrocks.analysis.FunctionCallExpr;
+import com.starrocks.analysis.LiteralExpr;
+import com.starrocks.analysis.SlotRef;
+import com.starrocks.analysis.TableName;
 import com.starrocks.sql.analyzer.Field;
 import com.starrocks.sql.ast.FieldReference;
 import com.starrocks.sql.ast.Relation;
@@ -62,7 +82,9 @@ public class ColumnUtils {
      * @param checkDataMasking
      */
     public static void setTableName(ColumnNode columnNode, TableName tableName, boolean checkDataMasking) {
-        if (Objects.isNull(tableName)) return;
+        if (Objects.isNull(tableName)) {
+            return;
+        }
         // 判断字段是否需要加密
         boolean dataMasking = false;
         if (checkDataMasking && StringUtils.isNotBlank(tableName.getCatalog())) {
@@ -129,8 +151,9 @@ public class ColumnUtils {
      * @return
      */
     public static String getTableFieldByType(TableFieldType tableFieldType, TableName tableName) {
-        if (Objects.isNull(tableName))
+        if (Objects.isNull(tableName)) {
             return null;
+        }
         switch (tableFieldType) {
             case CATALOG:
                 return tableName.getCatalog();
@@ -155,7 +178,9 @@ public class ColumnUtils {
     }
 
     public static boolean matchFullTableName(ColumnNode columnNode, Relation relation) {
-        if (Objects.isNull(relation)) return false;
+        if (Objects.isNull(relation)) {
+            return false;
+        }
         return StringUtils.equals(columnNode.getTableFieldByType(TableFieldType.CATALOG_DB_TBL),
                 ColumnUtils.getTableFieldByType(TableFieldType.CATALOG_DB_TBL, relation.getAlias()));
     }
@@ -168,8 +193,8 @@ public class ColumnUtils {
         if (StringUtils.isNotBlank(columnNode.getCatalog())) {
             return matchFullTableName(columnNode, tableName);
         } else if (StringUtils.isNotBlank(columnNode.getDatabase())) {
-            return StringUtils.equals(columnNode.getTableFieldByType(TableFieldType.DB_TBL)
-                    , getTableFieldByType(TableFieldType.DB_TBL, tableName));
+            return StringUtils.equals(columnNode.getTableFieldByType(TableFieldType.DB_TBL),
+                    getTableFieldByType(TableFieldType.DB_TBL, tableName));
 
         } else if (StringUtils.isNotBlank(columnNode.getTableName())) {
             return StringUtils.equals(columnNode.getTableName(), getTableFieldByType(TableFieldType.TBL, tableName));
