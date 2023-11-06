@@ -134,4 +134,15 @@ public class DataMaskingAnalyzerTest {
                 " where t1.id = t2.student_id and t3.id = t2.course_id) as tmp \n";
         analyzeSql(sql);
     }
+
+    @Test
+    public void testIfQuery() {
+        String sql = "select t1.id as student_id, " +
+                "  t1.name as student_name, \n" +
+                "  abs(abs(t1.height+10)) as student_height, \n" +
+                "  abs(abs(t1.height+t1.age)) as student_height_add_age , \n" +
+                "  if(t1.age < 12, '小学生', t1.name ) as child_student \n" +
+                " from students as t1";
+        analyzeSql(sql);
+    }
 }
