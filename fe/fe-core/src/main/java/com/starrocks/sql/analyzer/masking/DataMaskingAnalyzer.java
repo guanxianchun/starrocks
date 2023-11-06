@@ -124,12 +124,16 @@ public class DataMaskingAnalyzer {
     }
 
     private void handleCTERelation(CTERelation cteRelation, ColumnNode parent) {
+        // with语句，可以跳过节点, 减少一层关系
+        // ColumnNode columnNode = new ColumnNode().setName(parent.getName()).setTableName(cteRelation.getName());
+        // parent.addColumnNode(columnNode);
+        // visitRelation(cteRelation.getCteQueryStatement().getQueryRelation(), columnNode);
         visitRelation(cteRelation.getCteQueryStatement().getQueryRelation(), parent);
     }
 
     private void handleSubQueryRelation(SubqueryRelation subqueryRelation, ColumnNode parent) {
         ColumnUtils.setTableName(parent, subqueryRelation.getAlias(), false);
-        visitRelation(subqueryRelation, parent);
+        visitRelation(subqueryRelation.getQueryStatement().getQueryRelation(), parent);
     }
 
     /**

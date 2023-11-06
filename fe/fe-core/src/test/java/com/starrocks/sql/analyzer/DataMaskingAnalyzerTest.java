@@ -112,4 +112,15 @@ public class DataMaskingAnalyzerTest {
                 " where t1.id = t2.student_id and t3.id = t2.course_id ";
         analyzeSql(sql);
     }
+
+    @Test
+    public void testCTEQuery() {
+        String sql = "with tt as (select t1.id as student_id, t1.name as student_name, \n" +
+                "  t3.name as course_name,  \n" +
+                "  t2.score as score \n" +
+                " from students as t1, student_course as t2, course as t3  \n" +
+                " where t1.id = t2.student_id and t3.id = t2.course_id) \n" +
+                " select tmp.student_id , tmp.student_name, tmp.course_name, tmp.score from (select * from tt) as tmp";
+        analyzeSql(sql);
+    }
 }
