@@ -45,12 +45,15 @@ import java.util.Objects;
  * @Date 2023/11/5 上午10:56
  */
 public class DataMaskingAnalyzer {
-
     public void analyzeStatement(QueryStatement stmt) {
         System.out.println(stmt.getOrigStmt().originStmt);
+        System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
         QueryRelation queryRelation = stmt.getQueryRelation();
         ColumnNode root = new ColumnNode();
         visitRelation(queryRelation, root);
+        System.out.printf("column size: %s, data masking is : %s%n",
+                root.getChildren().size(), root.isDataMasking());
+        System.out.println("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
         System.out.println(JSON.toJSONString(root, SerializerFeature.PrettyFormat));
     }
 
@@ -76,13 +79,12 @@ public class DataMaskingAnalyzer {
         Map<Field, Column> columns = tableRelation.getColumns();
         for (Map.Entry<Field, Column> entry : columns.entrySet()) {
             Field field = entry.getKey();
-            if (!ColumnUtils.columnEquals(parent, field)) {
+            if (!ColumnUtils.columnEquals(parent, field.getName())) {
                 continue;
             }
             ColumnNode columnNode = ColumnUtils.buildColumnNode(field, tableRelation.getName(), null, true);
             parent.addColumnNode(columnNode);
         }
-        parent.refreshDataMasking();
     }
 
     private void handleUnionRelation(UnionRelation unionRelation, ColumnNode parent) {
@@ -102,7 +104,6 @@ public class DataMaskingAnalyzer {
                 }
             }
         }
-        parent.refreshDataMasking();
     }
 
     private void handleViewRelation(ViewRelation viewRelation, ColumnNode parent) {
@@ -132,7 +133,6 @@ public class DataMaskingAnalyzer {
     }
 
     /**
-     *
      * @param selectRelation
      * @param parent
      */
@@ -144,11 +144,9 @@ public class DataMaskingAnalyzer {
         } else {
             handleSelectItems(subRelation, items, parent);
         }
-        parent.refreshDataMasking();
     }
 
     /**
-     *
      * @param subRelation
      * @param items
      * @param parent
@@ -158,7 +156,7 @@ public class DataMaskingAnalyzer {
             for (SelectListItem item : items) {
                 Expr expr = item.getExpr();
                 LinkedList<ColumnNode> columnNodes = ColumnUtils.buildColumnNodes(expr, item.getAlias());
-                parent.addColumnNodes(columnNodes);
+                addOneColumn(parent, columnNodes, StringUtils.isBlank(item.getAlias()) ? parent.getName() : item.getAlias());
                 visitChildren(subRelation, columnNodes);
             }
         } else {
@@ -173,8 +171,22 @@ public class DataMaskingAnalyzer {
         }
     }
 
+    private void addOneColumn(ColumnNode parent, LinkedList<ColumnNode> columnNodes, String columnName) {
+        if (Objects.isNull(columnNodes) || CollectionUtils.isEmpty(columnNodes)) {
+            parent.addColumnNode(new ColumnNode().setName(columnName));
+            return;
+        }
+        if (columnNodes.size() == 1) {
+            parent.addColumnNode(columnNodes.get(0));
+        } else {
+            ColumnNode columnNode = new ColumnNode().setName(columnName).setTableName(parent.getTableName());
+            columnNode.addColumnNodes(columnNodes);
+            parent.addColumnNode(columnNode);
+        }
+
+    }
+
     /**
-     *
      * @param items
      * @param parent
      * @return
@@ -197,7 +209,6 @@ public class DataMaskingAnalyzer {
     }
 
     /**
-     *
      * @param items
      * @return
      */

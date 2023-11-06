@@ -16,6 +16,7 @@ package com.starrocks.sql.analyzer.masking;
 
 import com.google.common.base.Joiner;
 import com.starrocks.analysis.ArithmeticExpr;
+import com.starrocks.analysis.BinaryPredicate;
 import com.starrocks.analysis.CastExpr;
 import com.starrocks.analysis.Expr;
 import com.starrocks.analysis.FunctionCallExpr;
@@ -48,21 +49,16 @@ public class ColumnUtils {
             LinkedList<ColumnNode> columnNodes = new LinkedList<>();
             columnNodes.add(buildColumnNode((SlotRef) expr, columnAlias));
             return columnNodes;
-        } else if (expr instanceof CastExpr) {
-            return buildColumnNodes(((CastExpr) expr).getChildren(), columnAlias);
-        } else if (expr instanceof FunctionCallExpr) {
-            return buildColumnNodes(((FunctionCallExpr) expr).getChildren(), columnAlias);
-        } else if (expr instanceof ArithmeticExpr) {
-            return buildColumnNodes(((ArithmeticExpr) expr).getChildren(), columnAlias);
         } else if (expr instanceof FieldReference) {
             FieldReference field = (FieldReference) expr;
             LinkedList<ColumnNode> columnNodes = new LinkedList<>();
             columnNodes.add(new ColumnNode().setName(field.getFieldIndex() + "").setAlias(columnAlias));
             return columnNodes;
-        } else if (expr instanceof LiteralExpr) {
+        } else if (expr instanceof LiteralExpr || expr instanceof BinaryPredicate) {
             return new LinkedList<>();
+        } else {
+            return buildColumnNodes(expr.getChildren(), columnAlias);
         }
-        return new LinkedList<>();
     }
 
     /**
@@ -85,15 +81,17 @@ public class ColumnUtils {
         if (Objects.isNull(tableName)) {
             return;
         }
+        columnNode.setTableName(tableName.getTbl()).setDatabase(tableName.getDb()).setCatalog(tableName.getCatalog());
         // 判断字段是否需要加密
         boolean dataMasking = false;
         if (checkDataMasking && StringUtils.isNotBlank(tableName.getCatalog())) {
             dataMasking = columnNode.getName().hashCode() % 3 == 0;
+        }
+        if (dataMasking) {
+            columnNode.setDataMasking(dataMasking);
             System.out.printf("dataMasking %s.%s.%s.%s = %s \n", tableName.getCatalog(),
                     tableName.getDb(), tableName.getTbl(), columnNode.getName(), dataMasking);
         }
-        columnNode.setTableName(tableName.getTbl()).setDatabase(tableName.getDb()).setCatalog(tableName.getCatalog())
-                .setDataMasking(dataMasking);
     }
 
     /**
@@ -104,13 +102,12 @@ public class ColumnUtils {
     public static LinkedList<ColumnNode> buildColumnNodes(List<Expr> exprs, String columnAlias) {
         LinkedList<ColumnNode> columnNodes = new LinkedList<>();
         for (Expr expr : exprs) {
-            buildColumnNodes(expr, columnAlias);
+            columnNodes.addAll(buildColumnNodes(expr, columnAlias));
         }
         return columnNodes;
     }
 
     /**
-     *
      * @param field
      * @param tableName
      * @param columnAlias
@@ -138,11 +135,8 @@ public class ColumnUtils {
      * @return
      */
     public static boolean matchFullTableName(ColumnNode columnNode, TableName tableName) {
-        if (StringUtils.equals(columnNode.getTableFieldByType(TableFieldType.CATALOG_DB),
-                getTableFieldByType(TableFieldType.CATALOG_DB, tableName))) {
-            return StringUtils.equals(columnNode.getTableName(), getTableFieldByType(TableFieldType.TBL, tableName));
-        }
-        return false;
+        return StringUtils.equals(getTableFieldByType(TableFieldType.CATALOG_DB_TBL, tableName),
+                columnNode.getTableFieldByType(TableFieldType.CATALOG_DB_TBL));
     }
 
     /**
@@ -162,7 +156,7 @@ public class ColumnUtils {
             case CATALOG_DB:
                 return Joiner.on(".").skipNulls().join(tableName.getCatalog(), tableName.getDb());
             case CATALOG_DB_TBL:
-                return Joiner.on(".").skipNulls().join(tableName.getCatalog(), tableName.getDb(), tableName);
+                return Joiner.on(".").skipNulls().join(tableName.getCatalog(), tableName.getDb(), tableName.getTbl());
             case DB_TBL:
                 return Joiner.on(".").skipNulls().join(tableName.getDb(), tableName.getTbl());
             default:
@@ -181,24 +175,6 @@ public class ColumnUtils {
         if (Objects.isNull(relation)) {
             return false;
         }
-        return StringUtils.equals(columnNode.getTableFieldByType(TableFieldType.CATALOG_DB_TBL),
-                ColumnUtils.getTableFieldByType(TableFieldType.CATALOG_DB_TBL, relation.getAlias()));
-    }
-
-    public static boolean columnEquals(ColumnNode columnNode, Field field) {
-        if (!columnEquals(columnNode, field.getName())) {
-            return false;
-        }
-        TableName tableName = field.getRelationAlias();
-        if (StringUtils.isNotBlank(columnNode.getCatalog())) {
-            return matchFullTableName(columnNode, tableName);
-        } else if (StringUtils.isNotBlank(columnNode.getDatabase())) {
-            return StringUtils.equals(columnNode.getTableFieldByType(TableFieldType.DB_TBL),
-                    getTableFieldByType(TableFieldType.DB_TBL, tableName));
-
-        } else if (StringUtils.isNotBlank(columnNode.getTableName())) {
-            return StringUtils.equals(columnNode.getTableName(), getTableFieldByType(TableFieldType.TBL, tableName));
-        }
-        return true;
+        return matchFullTableName(columnNode, relation.getAlias());
     }
 }

@@ -34,6 +34,7 @@ public class ColumnNode {
     private String catalog;
     private boolean dataMasking = false;
     private final LinkedList<ColumnNode> children = new LinkedList<>();
+    private ColumnNode parentNode;
 
     public String getName() {
         return name;
@@ -80,6 +81,10 @@ public class ColumnNode {
         return this;
     }
 
+    public void setParentNode(ColumnNode parentNode) {
+        this.parentNode = parentNode;
+    }
+
     public LinkedList<ColumnNode> getChildren() {
         return children;
     }
@@ -88,19 +93,18 @@ public class ColumnNode {
         return dataMasking;
     }
 
-    public ColumnNode setDataMasking(boolean dataMasking) {
+    public void setDataMasking(boolean dataMasking) {
         this.dataMasking = dataMasking;
-        return this;
+        if (dataMasking && Objects.nonNull(name)) {
+            System.out.printf("set column data masking ==> %s.%s = %s \n",
+                    getTableFieldByType(TableFieldType.CATALOG_DB_TBL), name, dataMasking);
+        }
+        if (dataMasking && Objects.nonNull(parentNode)) {
+            parentNode.setDataMasking(true);
+        }
+
     }
 
-    public void refreshDataMasking() {
-        for (ColumnNode node : children) {
-            if (node.isDataMasking()) {
-                dataMasking = true;
-                break;
-            }
-        }
-    }
 
     public String getTableFieldByType(TableFieldType tableFieldType) {
         switch (tableFieldType) {
@@ -129,7 +133,7 @@ public class ColumnNode {
         if (CollectionUtils.isEmpty(columnNodes)) {
             return;
         }
-        children.addAll(columnNodes);
+        columnNodes.forEach(this::addColumnNode);
     }
 
     public void addColumnNode(ColumnNode columnNode) {
@@ -137,5 +141,9 @@ public class ColumnNode {
             return;
         }
         children.add(columnNode);
+        columnNode.setParentNode(this);
+        if (columnNode.isDataMasking()) {
+            setDataMasking(true);
+        }
     }
 }
