@@ -17,8 +17,10 @@ package com.starrocks.sql.analyzer.masking;
 import com.google.common.base.Joiner;
 import org.apache.commons.collections4.CollectionUtils;
 
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * @ClassName ColumnNode
@@ -35,6 +37,8 @@ public class ColumnNode {
     private boolean dataMasking = false;
     private final LinkedList<ColumnNode> children = new LinkedList<>();
     private ColumnNode parentNode;
+
+    private Set<MaskingColumn> maskingColumns;
 
     public String getName() {
         return name;
@@ -93,6 +97,10 @@ public class ColumnNode {
         return dataMasking;
     }
 
+    public Set<MaskingColumn> getMaskingColumns() {
+        return maskingColumns;
+    }
+
     public void setDataMasking(boolean dataMasking) {
         this.dataMasking = dataMasking;
         if (dataMasking && Objects.nonNull(name)) {
@@ -144,6 +152,22 @@ public class ColumnNode {
         columnNode.setParentNode(this);
         if (columnNode.isDataMasking()) {
             setDataMasking(true);
+            if (CollectionUtils.isEmpty(columnNode.getChildren())) {
+                columnNode.addMaskingColumn(new MaskingColumn(columnNode.getDatabase(), columnNode.getTableName(), columnNode.getName()));
+            }
+        }
+
+    }
+
+    public void addMaskingColumn(MaskingColumn maskingColumn) {
+        if (Objects.nonNull(parentNode) && Objects.isNull(parentNode.parentNode)) {
+            if (Objects.isNull(maskingColumns)) {
+                maskingColumns = new HashSet<>();
+            }
+            maskingColumns.add(maskingColumn);
+        }
+        if (Objects.nonNull(parentNode)) {
+            parentNode.addMaskingColumn(maskingColumn);
         }
     }
 }
