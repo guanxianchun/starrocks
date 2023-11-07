@@ -293,6 +293,10 @@ statement
 
     //Unsupported Statement
     | unsupportedStatement
+    // column policy statement
+    | createColumnPolicyStatement
+    | dropColumnPolicyStatement
+    | alterColumnPolicyStatement
     ;
 
 // ---------------------------------------- DataBase Statement ---------------------------------------------------------
@@ -2563,4 +2567,42 @@ nonReserved
     | WARNINGS | WEEK | WHITELIST | WORK | WRITE  | WAREHOUSE | WAREHOUSES
     | YEAR
     | DOTDOTDOT
+    ;
+
+// ---------------------------------------- policy Statement ---------------------------------------------------------
+createColumnPolicyStatement
+    : CREATE COLUMN POLICY identifier ON qualifiedName WHEN userExpression addColumnPolicys
+    ;
+userExpression
+    : '(' CURRENT_USER IN stringList ')'
+    ;
+addColumnPolicys
+    : addColumnPolicy (',' addColumnPolicy)*
+    ;
+
+addColumnPolicy
+    : ADD COLUMN identifier WITH maskingFunctionCall
+    ;
+
+maskingFunctionCall
+    : qualifiedName '(' (expression (',' expression)*)? ')'
+    ;
+
+dropColumnPolicyStatement
+    : DROP COLUMN POLICY identifier ON qualifiedName identifierList
+    ;
+
+alterColumnPolicyStatement
+    : ALTER COLUMN POLICY identifier ON qualifiedName ADD USER policyUsers
+    | ALTER COLUMN POLICY identifier ON qualifiedName DROP USER policyUsers
+    | ALTER COLUMN POLICY identifier ON qualifiedName addColumnPolicys
+    | ALTER COLUMN POLICY identifier ON qualifiedName DROP COLUMN columnNames
+    | ALTER COLUMN POLICY identifier ON qualifiedName MODIFY COLUMN identifier WITH maskingFunctionCall
+    | ALTER COLUMN POLICY identifier ON qualifiedName RENAME identifier
+    ;
+policyUsers
+    : string (',' string)*
+    ;
+columnNames
+    : identifier  (',' identifier)*
     ;

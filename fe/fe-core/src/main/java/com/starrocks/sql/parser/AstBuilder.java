@@ -3511,7 +3511,7 @@ public class AstBuilder extends StarRocksBaseVisitor<ParseNode> {
                             PARSER_ERROR_MSG.generatedColumnLimit("rollupName", "ADD GENERATED COLUMN"),
                             columnDef.getPos());
                 }
-    
+
                 if (properties.size() != 0) {
                     throw new ParsingException(
                             PARSER_ERROR_MSG.generatedColumnLimit("properties", "ADD GENERATED COLUMN"),
@@ -6701,6 +6701,21 @@ public class AstBuilder extends StarRocksBaseVisitor<ParseNode> {
         }
 
         return new LabelName(dbName, name, createPos(start, stop));
+    }
+
+    @Override
+    public ParseNode visitCreateColumnPolicyStatement(StarRocksParser.CreateColumnPolicyStatementContext ctx) {
+        return super.visitCreateColumnPolicyStatement(ctx);
+    }
+
+    @Override
+    public ParseNode visitDropColumnPolicyStatement(StarRocksParser.DropColumnPolicyStatementContext ctx) {
+        return super.visitDropColumnPolicyStatement(ctx);
+    }
+
+    @Override
+    public ParseNode visitAlterColumnPolicyStatement(StarRocksParser.AlterColumnPolicyStatementContext ctx) {
+        return super.visitAlterColumnPolicyStatement(ctx);
     }
 }
 

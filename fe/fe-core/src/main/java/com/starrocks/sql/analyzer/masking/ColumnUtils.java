@@ -15,11 +15,8 @@
 package com.starrocks.sql.analyzer.masking;
 
 import com.google.common.base.Joiner;
-import com.starrocks.analysis.ArithmeticExpr;
 import com.starrocks.analysis.BinaryPredicate;
-import com.starrocks.analysis.CastExpr;
 import com.starrocks.analysis.Expr;
-import com.starrocks.analysis.FunctionCallExpr;
 import com.starrocks.analysis.LiteralExpr;
 import com.starrocks.analysis.SlotRef;
 import com.starrocks.analysis.TableName;
@@ -126,7 +123,8 @@ public class ColumnUtils {
      * @return
      */
     public static boolean columnEquals(ColumnNode columnNode, String columnName) {
-        return StringUtils.equals(columnName, columnNode.getName()) || StringUtils.equals(columnName, columnNode.getAlias());
+        return StringUtils.equals(columnName, columnNode.getName())
+                || StringUtils.equals(columnName, columnNode.getAlias());
     }
 
     /**

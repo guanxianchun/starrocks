@@ -14,7 +14,6 @@
 
 package com.starrocks.sql.analyzer;
 
-import com.starrocks.common.DdlException;
 import com.starrocks.server.GlobalStateMgr;
 import com.starrocks.sql.analyzer.masking.DataMaskingAnalyzer;
 import com.starrocks.sql.ast.CreateTableStmt;

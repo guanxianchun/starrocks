@@ -153,7 +153,8 @@ public class ColumnNode {
         if (columnNode.isDataMasking()) {
             setDataMasking(true);
             if (CollectionUtils.isEmpty(columnNode.getChildren())) {
-                columnNode.addMaskingColumn(new MaskingColumn(columnNode.getDatabase(), columnNode.getTableName(), columnNode.getName()));
+                columnNode.addMaskingColumn(new MaskingColumn(columnNode.getDatabase(),
+                        columnNode.getTableName(), columnNode.getName()));
             }
         }
 
