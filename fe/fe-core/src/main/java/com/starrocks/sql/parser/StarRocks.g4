@@ -2571,10 +2571,10 @@ nonReserved
 
 // ---------------------------------------- policy Statement ---------------------------------------------------------
 createColumnPolicyStatement
-    : CREATE COLUMN POLICY identifier ON qualifiedName WHEN userExpression addColumnPolicys
+    : CREATE (OR REPLACE)? COLUMN POLICY identifier ON qualifiedName WHEN userExpression addColumnPolicys
     ;
 userExpression
-    : '(' CURRENT_USER IN stringList ')'
+    : '(' CURRENT_USER EQ string ')'
     ;
 addColumnPolicys
     : addColumnPolicy (',' addColumnPolicy)*
@@ -2593,16 +2593,12 @@ dropColumnPolicyStatement
     ;
 
 alterColumnPolicyStatement
-    : ALTER COLUMN POLICY identifier ON qualifiedName ADD USER policyUsers
-    | ALTER COLUMN POLICY identifier ON qualifiedName DROP USER policyUsers
-    | ALTER COLUMN POLICY identifier ON qualifiedName addColumnPolicys
+    : ALTER COLUMN POLICY identifier ON qualifiedName addColumnPolicys
     | ALTER COLUMN POLICY identifier ON qualifiedName DROP COLUMN columnNames
     | ALTER COLUMN POLICY identifier ON qualifiedName MODIFY COLUMN identifier WITH maskingFunctionCall
     | ALTER COLUMN POLICY identifier ON qualifiedName RENAME identifier
     ;
-policyUsers
-    : string (',' string)*
-    ;
+
 columnNames
     : identifier  (',' identifier)*
     ;
