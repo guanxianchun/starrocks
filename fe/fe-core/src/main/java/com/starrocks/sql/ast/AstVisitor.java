@@ -1156,4 +1156,19 @@ public abstract class AstVisitor<R, C> {
     public R visitGroupByClause(GroupByClause node, C context) {
         return null;
     }
+
+    // ---------------------------------------- Policy Statement ----------------------------------------------------
+
+    public R visitCreateColumnPolicyStatement(CreateColumnPolicyStmt statement, C context) {
+        return visitStatement(statement, context);
+    }
+
+    public R visitDropColumnPolicyStatement(DropColumnPolicyStmt statement, C context) {
+        return visitStatement(statement, context);
+    }
+
+    public R visitAlterColumnPolicyStatement(AlterPolicyStmt statement, C context) {
+        return visitStatement(statement, context);
+    }
+
 }

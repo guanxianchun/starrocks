@@ -39,7 +39,7 @@ public abstract class Policy implements Writable, GsonPostProcessable {
     protected long id = -1;
 
     @SerializedName(value = "type")
-    protected PolicyTypeEnum type = null;
+    protected PolicyType type = null;
 
     @SerializedName(value = "policyName")
     protected String policyName = null;
@@ -68,7 +68,7 @@ public abstract class Policy implements Writable, GsonPostProcessable {
     public Policy() {
     }
 
-    public Policy(PolicyTypeEnum type) {
+    public Policy(PolicyType type) {
         this.type = type;
     }
 
@@ -78,7 +78,7 @@ public abstract class Policy implements Writable, GsonPostProcessable {
      * @param type       policy type
      * @param policyName policy name
      */
-    public Policy(long id, final PolicyTypeEnum type, final String policyName) {
+    public Policy(long id, final PolicyType type, final String policyName) {
         this.id = id;
         this.type = type;
         this.policyName = policyName;

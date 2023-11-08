@@ -15,19 +15,14 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package com.starrocks.sql.ast;
-
-import com.starrocks.analysis.TableName;
-import com.starrocks.policy.PolicyType;
+package com.starrocks.policy;
 
 /**
- * @ClassName DropColumnPolicyStmt
+ * @ClassName PolicyOperator
  * @Author guanxianchun
  * @Description
- * @Date 2023/11/7 下午11:43
+ * @Date 2023/11/8 下午11:30
  */
-public class DropColumnPolicyStmt extends DropPolicyStmt {
-    public DropColumnPolicyStmt(String policyName, TableName tableName) {
-        super(policyName, PolicyType.COLUMN, tableName);
-    }
+public enum PolicyOperator {
+    ADD_POLICY, DROP_COLUMN, MODIFY_COLUMN_FUNCTION, RENAME
 }

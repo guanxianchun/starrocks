@@ -17,7 +17,12 @@
 
 package com.starrocks.sql.ast;
 
+import com.starrocks.analysis.FunctionCallExpr;
+import com.starrocks.analysis.TableName;
+import com.starrocks.policy.PolicyType;
 import com.starrocks.sql.parser.NodePosition;
+
+import java.util.Map;
 
 /**
  * @ClassName CreateColumnPolicyStmt
@@ -25,9 +30,13 @@ import com.starrocks.sql.parser.NodePosition;
  * @Description
  * @Date 2023/11/7 下午11:42
  */
-public class CreateColumnPolicyStmt extends CreatePolicyStmt {
-    protected CreateColumnPolicyStmt(NodePosition pos) {
-        super(pos);
+public final class CreateColumnPolicyStmt extends CreatePolicyStmt {
+    private final Map<String, FunctionCallExpr> columnMaskFunctionMap;
+
+    public CreateColumnPolicyStmt(String policyName, boolean overwrite, TableName tableName, String user,
+                                  Map<String, FunctionCallExpr> columnMaskFunctionMap) {
+        super(NodePosition.ZERO, policyName, PolicyType.COLUMN, overwrite, tableName, user);
+        this.columnMaskFunctionMap = columnMaskFunctionMap;
     }
 
     @Override

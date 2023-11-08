@@ -23,6 +23,6 @@ package com.starrocks.policy;
  * @Description
  * @Date 2023/11/7 下午10:40
  */
-public enum PolicyTypeEnum {
+public enum PolicyType {
     COLUMN
 }

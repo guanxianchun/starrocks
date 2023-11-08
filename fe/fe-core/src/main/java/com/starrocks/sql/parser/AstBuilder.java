@@ -159,6 +159,7 @@ import com.starrocks.sql.ast.ColumnSeparator;
 import com.starrocks.sql.ast.CompactionClause;
 import com.starrocks.sql.ast.CreateAnalyzeJobStmt;
 import com.starrocks.sql.ast.CreateCatalogStmt;
+import com.starrocks.sql.ast.CreateColumnPolicyStmt;
 import com.starrocks.sql.ast.CreateDbStmt;
 import com.starrocks.sql.ast.CreateFileStmt;
 import com.starrocks.sql.ast.CreateFunctionStmt;
@@ -6705,7 +6706,21 @@ public class AstBuilder extends StarRocksBaseVisitor<ParseNode> {
 
     @Override
     public ParseNode visitCreateColumnPolicyStatement(StarRocksParser.CreateColumnPolicyStatementContext ctx) {
-        return super.visitCreateColumnPolicyStatement(ctx);
+        boolean overwrite = Objects.nonNull(ctx.REPLACE());
+        String policyName = ctx.identifier().getText();
+        TableName tableName = qualifiedNameToTableName(getQualifiedName(ctx.qualifiedName()));
+        String user = ((StringLiteral) visitUserExpression(ctx.userExpression())).getValue();
+        Map<String, FunctionCallExpr> columnMaskFunMap = getColumnMaskFunctionMap(ctx.addColumnPolicys());
+        return new CreateColumnPolicyStmt(policyName, overwrite, tableName, user, columnMaskFunMap);
+    }
+
+    private Map<String, FunctionCallExpr> getColumnMaskFunctionMap(StarRocksParser.AddColumnPolicysContext
+                                                                           addColumnPolicysContext) {
+        Map<String, FunctionCallExpr> columnMaskFunMap = Maps.newHashMap();
+        addColumnPolicysContext.addColumnPolicy().forEach(v -> {
+            columnMaskFunMap.put(v.identifier().getText(), (FunctionCallExpr) visitMaskingFunctionCall(v.maskingFunctionCall()));
+        });
+        return columnMaskFunMap;
     }
 
     @Override
@@ -6716,6 +6731,16 @@ public class AstBuilder extends StarRocksBaseVisitor<ParseNode> {
     @Override
     public ParseNode visitAlterColumnPolicyStatement(StarRocksParser.AlterColumnPolicyStatementContext ctx) {
         return super.visitAlterColumnPolicyStatement(ctx);
+    }
+
+    @Override
+    public ParseNode visitUserExpression(StarRocksParser.UserExpressionContext ctx) {
+        return visitString(ctx.string());
+    }
+
+    @Override
+    public ParseNode visitMaskingFunctionCall(StarRocksParser.MaskingFunctionCallContext ctx) {
+        return super.visitMaskingFunctionCall(ctx);
     }
 }
 

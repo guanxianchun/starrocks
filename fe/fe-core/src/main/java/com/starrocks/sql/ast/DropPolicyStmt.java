@@ -22,26 +22,22 @@ import com.starrocks.policy.PolicyType;
 import com.starrocks.sql.parser.NodePosition;
 
 /**
- * @ClassName CreatePolicyStmt
+ * @ClassName DropPolicyStmt
  * @Author guanxianchun
  * @Description
- * @Date 2023/11/7 下午10:47
+ * @Date 2023/11/8 下午11:12
  */
-public abstract class CreatePolicyStmt extends DdlStmt {
+public abstract class DropPolicyStmt extends DdlStmt {
     protected String policyName;
     protected PolicyType policyType;
-    protected boolean overwrite = false;
-    protected TableName tableName;
-    protected String user;
 
-    public CreatePolicyStmt(NodePosition pos, String policyName, PolicyType policyType, boolean overwrite,
-                            TableName tableName, String user) {
-        super(pos);
+    protected TableName tableName;
+
+    public DropPolicyStmt(String policyName, PolicyType policyType, TableName tableName) {
+        super(NodePosition.ZERO);
         this.policyName = policyName;
         this.policyType = policyType;
-        this.overwrite = overwrite;
         this.tableName = tableName;
-        this.user = user;
     }
 
     public String getPolicyName() {
@@ -52,15 +48,7 @@ public abstract class CreatePolicyStmt extends DdlStmt {
         return policyType;
     }
 
-    public boolean isOverwrite() {
-        return overwrite;
-    }
-
     public TableName getTableName() {
         return tableName;
-    }
-
-    public String getUser() {
-        return user;
     }
 }

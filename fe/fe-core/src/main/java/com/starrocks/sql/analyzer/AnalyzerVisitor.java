@@ -31,6 +31,7 @@ import com.starrocks.sql.ast.AlterDatabaseQuotaStmt;
 import com.starrocks.sql.ast.AlterDatabaseRenameStatement;
 import com.starrocks.sql.ast.AlterLoadStmt;
 import com.starrocks.sql.ast.AlterMaterializedViewStmt;
+import com.starrocks.sql.ast.AlterPolicyStmt;
 import com.starrocks.sql.ast.AlterResourceGroupStmt;
 import com.starrocks.sql.ast.AlterResourceStmt;
 import com.starrocks.sql.ast.AlterRoutineLoadStmt;
@@ -52,6 +53,7 @@ import com.starrocks.sql.ast.CancelLoadStmt;
 import com.starrocks.sql.ast.CancelRefreshMaterializedViewStmt;
 import com.starrocks.sql.ast.CreateAnalyzeJobStmt;
 import com.starrocks.sql.ast.CreateCatalogStmt;
+import com.starrocks.sql.ast.CreateColumnPolicyStmt;
 import com.starrocks.sql.ast.CreateDbStmt;
 import com.starrocks.sql.ast.CreateFileStmt;
 import com.starrocks.sql.ast.CreateFunctionStmt;
@@ -71,6 +73,7 @@ import com.starrocks.sql.ast.CreateViewStmt;
 import com.starrocks.sql.ast.DeleteStmt;
 import com.starrocks.sql.ast.DescStorageVolumeStmt;
 import com.starrocks.sql.ast.DropCatalogStmt;
+import com.starrocks.sql.ast.DropColumnPolicyStmt;
 import com.starrocks.sql.ast.DropDbStmt;
 import com.starrocks.sql.ast.DropFileStmt;
 import com.starrocks.sql.ast.DropFunctionStmt;
@@ -840,6 +843,27 @@ public class AnalyzerVisitor extends AstVisitor<Void, ConnectContext> {
     @Override
     public Void visitCancelCompactionStatement(CancelCompactionStmt statement, ConnectContext context) {
         CancelCompactionStmtAnalyzer.analyze(statement, context);
+        return null;
+    }
+
+    // ---------------------------------------- Policy Statement -------------------------------------------
+
+
+    @Override
+    public Void visitCreateColumnPolicyStatement(CreateColumnPolicyStmt statement, ConnectContext context) {
+        PolicyStmtAnalyzer.analyze(statement, context);
+        return null;
+    }
+
+    @Override
+    public Void visitDropColumnPolicyStatement(DropColumnPolicyStmt statement, ConnectContext context) {
+        PolicyStmtAnalyzer.analyze(statement, context);
+        return null;
+    }
+
+    @Override
+    public Void visitAlterColumnPolicyStatement(AlterPolicyStmt statement, ConnectContext context) {
+        PolicyStmtAnalyzer.analyze(statement, context);
         return null;
     }
 }
