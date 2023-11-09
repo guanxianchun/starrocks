@@ -6711,7 +6711,8 @@ public class AstBuilder extends StarRocksBaseVisitor<ParseNode> {
         TableName tableName = qualifiedNameToTableName(getQualifiedName(ctx.qualifiedName()));
         String user = ((StringLiteral) visitUserExpression(ctx.userExpression())).getValue();
         Map<String, FunctionCallExpr> columnMaskFunMap = getColumnMaskFunctionMap(ctx.addColumnPolicys());
-        return new CreateColumnPolicyStmt(policyName, overwrite, tableName, user, columnMaskFunMap);
+        return new CreateColumnPolicyStmt(policyName, overwrite, tableName,
+                new UserIdentity(user, "%"), columnMaskFunMap);
     }
 
     private Map<String, FunctionCallExpr> getColumnMaskFunctionMap(StarRocksParser.AddColumnPolicysContext

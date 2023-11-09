@@ -19,10 +19,18 @@ package com.starrocks.sql.ast;
 
 import com.starrocks.analysis.FunctionCallExpr;
 import com.starrocks.analysis.TableName;
+import com.starrocks.catalog.Database;
+import com.starrocks.catalog.Table;
+import com.starrocks.common.ErrorCode;
+import com.starrocks.common.UserException;
+import com.starrocks.policy.ColumnPolicy;
+import com.starrocks.policy.Policy;
 import com.starrocks.policy.PolicyType;
+import com.starrocks.server.GlobalStateMgr;
 import com.starrocks.sql.parser.NodePosition;
 
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * @ClassName CreateColumnPolicyStmt
@@ -33,14 +41,24 @@ import java.util.Map;
 public final class CreateColumnPolicyStmt extends CreatePolicyStmt {
     private final Map<String, FunctionCallExpr> columnMaskFunctionMap;
 
-    public CreateColumnPolicyStmt(String policyName, boolean overwrite, TableName tableName, String user,
+    public CreateColumnPolicyStmt(String policyName, boolean overwrite, TableName tableName, UserIdentity user,
                                   Map<String, FunctionCallExpr> columnMaskFunctionMap) {
         super(NodePosition.ZERO, policyName, PolicyType.COLUMN, overwrite, tableName, user);
         this.columnMaskFunctionMap = columnMaskFunctionMap;
     }
 
     @Override
-    public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-        return super.accept(visitor, context);
+    public Policy createPolicy() throws UserException {
+        Database database = Optional.ofNullable(GlobalStateMgr.getCurrentState().getDb(tableName.getDb()))
+                .orElseThrow(() -> new UserException(ErrorCode.ERR_BAD_DB_ERROR.formatErrorMsg(tableName.getDb())));
+        Table table = Optional.ofNullable(database.getTable(tableName.getTbl()))
+                .orElseThrow(() -> new ArithmeticException(ErrorCode.ERR_BAD_TABLE_ERROR.formatErrorMsg(tableName.getTbl())));
+        user.analyze();
+        return new ColumnPolicy(database.getId(), table.getId(), PolicyType.COLUMN, policyName, user,
+                columnMaskFunctionMap, origStmt.originStmt);
+    }
+
+    public Map<String, FunctionCallExpr> getColumnMaskFunctionMap() {
+        return columnMaskFunctionMap;
     }
 }

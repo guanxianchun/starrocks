@@ -18,6 +18,8 @@
 package com.starrocks.sql.ast;
 
 import com.starrocks.analysis.TableName;
+import com.starrocks.common.UserException;
+import com.starrocks.policy.Policy;
 import com.starrocks.policy.PolicyType;
 import com.starrocks.sql.parser.NodePosition;
 
@@ -32,10 +34,10 @@ public abstract class CreatePolicyStmt extends DdlStmt {
     protected PolicyType policyType;
     protected boolean overwrite = false;
     protected TableName tableName;
-    protected String user;
+    protected UserIdentity user;
 
     public CreatePolicyStmt(NodePosition pos, String policyName, PolicyType policyType, boolean overwrite,
-                            TableName tableName, String user) {
+                            TableName tableName, UserIdentity user) {
         super(pos);
         this.policyName = policyName;
         this.policyType = policyType;
@@ -60,7 +62,9 @@ public abstract class CreatePolicyStmt extends DdlStmt {
         return tableName;
     }
 
-    public String getUser() {
+    public UserIdentity getUser() {
         return user;
     }
+
+    public abstract Policy createPolicy() throws UserException;
 }

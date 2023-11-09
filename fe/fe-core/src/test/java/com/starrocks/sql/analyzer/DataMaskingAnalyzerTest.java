@@ -14,6 +14,8 @@
 
 package com.starrocks.sql.analyzer;
 
+import com.google.gson.annotations.SerializedName;
+import com.starrocks.persist.gson.GsonUtils;
 import com.starrocks.server.GlobalStateMgr;
 import com.starrocks.sql.analyzer.masking.DataMaskingAnalyzer;
 import com.starrocks.sql.ast.CreateTableStmt;
@@ -29,10 +31,10 @@ import org.junit.Test;
  * @Date 2023/11/5 下午1:02
  */
 public class DataMaskingAnalyzerTest {
-    private static String ENGINE = "ENGINE=OLAP\n";
-    private static String DUPLICATE_KEYS_FORMAT = "DUPLICATE KEY(%s) \n";
-    private static String DISTRIBUTED_FORMAT = "DISTRIBUTED BY HASH(%s) BUCKETS 3 \n";
-    private static String PROPERTIES = "PROPERTIES (\n" +
+    private static final String ENGINE = "ENGINE=OLAP\n";
+    private static final String DUPLICATE_KEYS_FORMAT = "DUPLICATE KEY(%s) \n";
+    private static final String DISTRIBUTED_FORMAT = "DISTRIBUTED BY HASH(%s) BUCKETS 3 \n";
+    private static final String PROPERTIES = "PROPERTIES (\n" +
             "\"replication_num\" = \"1\",\n" +
             "\"in_memory\" = \"false\"\n" +
             ")";
@@ -143,5 +145,46 @@ public class DataMaskingAnalyzerTest {
                 "  if(t1.age < 12, '小学生', t1.name ) as child_student \n" +
                 " from students as t1";
         analyzeSql(sql);
+        Person student = new Student("hello", 29);
+        String json = GsonUtils.GSON.toJson(student);
+        Person person = GsonUtils.GSON.fromJson(json, Student.class);
+        System.out.println(person);
+    }
+
+    public class Person {
+        @SerializedName("name")
+        private String name;
+
+        public Person(String name) {
+            this.name = name;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public Person setName(String name) {
+            this.name = name;
+            return this;
+        }
+    }
+
+    public class Student extends Person {
+        @SerializedName("age")
+        private int age = 30;
+
+        public Student(String name, int age) {
+            super(name);
+            this.age = age;
+        }
+
+        public int getAge() {
+            return age;
+        }
+
+        public Student setAge(int age) {
+            this.age = age;
+            return this;
+        }
     }
 }

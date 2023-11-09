@@ -217,6 +217,7 @@ import com.starrocks.persist.metablock.SRMetaBlockLoader;
 import com.starrocks.persist.metablock.SRMetaBlockReader;
 import com.starrocks.plugin.PluginInfo;
 import com.starrocks.plugin.PluginMgr;
+import com.starrocks.policy.PolicyManager;
 import com.starrocks.privilege.AccessDeniedException;
 import com.starrocks.privilege.AuthorizationMgr;
 import com.starrocks.privilege.PrivilegeException;
@@ -547,6 +548,8 @@ public class GlobalStateMgr {
     private final SlotManager slotManager = new SlotManager(resourceUsageMonitor);
     private final SlotProvider slotProvider = new SlotProvider();
 
+    private PolicyManager policyManager;
+
     public List<Frontend> getFrontends(FrontendNodeType nodeType) {
         return nodeMgr.getFrontends(nodeType);
     }
@@ -764,6 +767,7 @@ public class GlobalStateMgr {
         } else {
             this.storageVolumeMgr = new SharedNothingStorageVolumeMgr();
         }
+        policyManager = new PolicyManager();
 
         GlobalStateMgr gsm = this;
         this.execution = new StateChangeExecution() {
@@ -1297,7 +1301,7 @@ public class GlobalStateMgr {
                         false);
             }
             Config.enable_persistent_index_by_default = VariableMgr.getDefaultSessionVariable()
-                .getEnablePersistentIndexByDefault();
+                    .getEnablePersistentIndexByDefault();
         } catch (UserException e) {
             LOG.warn("Failed to set ENABLE_ADAPTIVE_SINK_DOP", e);
         } catch (Throwable t) {
@@ -4081,6 +4085,7 @@ public class GlobalStateMgr {
     public MetaContext getMetaContext() {
         return metaContext;
     }
+
     public void createBuiltinStorageVolume() {
         try {
             String builtinStorageVolumeId = storageVolumeMgr.createBuiltinStorageVolume();
@@ -4107,5 +4112,9 @@ public class GlobalStateMgr {
 
     public ResourceUsageMonitor getResourceUsageMonitor() {
         return resourceUsageMonitor;
+    }
+
+    public PolicyManager getPolicyManager() {
+        return policyManager;
     }
 }

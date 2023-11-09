@@ -18,13 +18,19 @@
 package com.starrocks.policy;
 
 import com.google.gson.annotations.SerializedName;
+import com.starrocks.common.UserException;
+import com.starrocks.common.io.Text;
 import com.starrocks.common.io.Writable;
 import com.starrocks.persist.gson.GsonPostProcessable;
+import com.starrocks.persist.gson.GsonUtils;
 import com.starrocks.sql.ast.CreatePolicyStmt;
+import com.starrocks.sql.ast.UserIdentity;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.io.DataInput;
+import java.io.IOException;
+import java.util.Objects;
 
 /**
  * @ClassName Policy
@@ -35,58 +41,87 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public abstract class Policy implements Writable, GsonPostProcessable {
     private static final Logger LOG = LogManager.getLogger(Policy.class);
 
-    @SerializedName(value = "id")
-    protected long id = -1;
-
+    @SerializedName(value = "dbId")
+    protected Long dbId;
+    @SerializedName(value = "tableId")
+    protected Long tableId;
     @SerializedName(value = "type")
-    protected PolicyType type = null;
-
+    protected PolicyType type = PolicyType.COLUMN;
     @SerializedName(value = "policyName")
     protected String policyName = null;
-
-    @SerializedName(value = "version")
-    protected long version = -1;
-    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
-
-    public void writeLock() {
-        lock.writeLock().lock();
-    }
-
-    public void writeUnlock() {
-        lock.writeLock().unlock();
-    }
-
-    public void readLock() {
-        lock.readLock().lock();
-    }
-
-    public void readUnlock() {
-        lock.readLock().unlock();
-    }
-
-    // just for subclass lombok @Data
-    public Policy() {
-    }
-
-    public Policy(PolicyType type) {
-        this.type = type;
-    }
+    @SerializedName(value = "user")
+    protected UserIdentity user;
+    @SerializedName(value = "enabled")
+    protected boolean enabled = true;
+    protected String originStmt;
 
     /**
      * Base class for Policy.
      *
-     * @param type       policy type
-     * @param policyName policy name
+     * @param dbId
+     * @param tableId
+     * @param type
+     * @param policyName
+     * @param user
      */
-    public Policy(long id, final PolicyType type, final String policyName) {
-        this.id = id;
+    public Policy(Long dbId, Long tableId, PolicyType type, String policyName, UserIdentity user, String originStmt) {
+        this.dbId = dbId;
+        this.tableId = tableId;
         this.type = type;
         this.policyName = policyName;
-        this.version = 0;
+        this.user = user;
+        this.originStmt = originStmt;
     }
 
-    public static Policy fromCreateStmt(CreatePolicyStmt stmt) {
+    public static Policy fromCreateStmt(CreatePolicyStmt stmt) throws UserException {
+        return stmt.createPolicy();
+    }
 
-        return null;
+    public Long getDbId() {
+        return dbId;
+    }
+
+    public Long getTableId() {
+        return tableId;
+    }
+
+    public PolicyType getType() {
+        return type;
+    }
+
+    public String getPolicyName() {
+        return policyName;
+    }
+
+    public UserIdentity getUser() {
+        return user;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        Policy policy = (Policy) o;
+        return Objects.equals(dbId, policy.dbId) && Objects.equals(tableId, policy.tableId)
+                && type == policy.type && Objects.equals(policyName, policy.policyName)
+                && Objects.equals(user.getUser(), policy.user.getUser());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(dbId, tableId, type, policyName, user.getUser());
+    }
+
+    public static Policy read(DataInput in, PolicyType policyType) throws IOException {
+        String json = Text.readString(in);
+        return GsonUtils.GSON.fromJson(json, policyType == PolicyType.COLUMN ? ColumnPolicy.class : Policy.class);
     }
 }
