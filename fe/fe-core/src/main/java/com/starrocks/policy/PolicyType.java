@@ -24,5 +24,5 @@ package com.starrocks.policy;
  * @Date 2023/11/7 下午10:40
  */
 public enum PolicyType {
-    COLUMN
+    COLUMN, ROW
 }

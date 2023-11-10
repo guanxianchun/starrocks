@@ -39,6 +39,7 @@ import com.starrocks.sql.ast.AlterDatabaseQuotaStmt;
 import com.starrocks.sql.ast.AlterDatabaseRenameStatement;
 import com.starrocks.sql.ast.AlterLoadStmt;
 import com.starrocks.sql.ast.AlterMaterializedViewStmt;
+import com.starrocks.sql.ast.AlterPolicyStmt;
 import com.starrocks.sql.ast.AlterResourceGroupStmt;
 import com.starrocks.sql.ast.AlterResourceStmt;
 import com.starrocks.sql.ast.AlterRoleStmt;
@@ -61,6 +62,7 @@ import com.starrocks.sql.ast.CancelLoadStmt;
 import com.starrocks.sql.ast.CancelRefreshMaterializedViewStmt;
 import com.starrocks.sql.ast.CreateAnalyzeJobStmt;
 import com.starrocks.sql.ast.CreateCatalogStmt;
+import com.starrocks.sql.ast.CreateColumnPolicyStmt;
 import com.starrocks.sql.ast.CreateDbStmt;
 import com.starrocks.sql.ast.CreateFileStmt;
 import com.starrocks.sql.ast.CreateFunctionStmt;
@@ -79,6 +81,7 @@ import com.starrocks.sql.ast.CreateUserStmt;
 import com.starrocks.sql.ast.CreateViewStmt;
 import com.starrocks.sql.ast.DropAnalyzeJobStmt;
 import com.starrocks.sql.ast.DropCatalogStmt;
+import com.starrocks.sql.ast.DropColumnPolicyStmt;
 import com.starrocks.sql.ast.DropDbStmt;
 import com.starrocks.sql.ast.DropFileStmt;
 import com.starrocks.sql.ast.DropFunctionStmt;
@@ -919,6 +922,24 @@ public class DDLStmtExecutor {
                     context.getGlobalStateMgr().getStorageVolumeMgr().setDefaultStorageVolume(stmt)
             );
             return null;
+        }
+
+        @Override
+        public ShowResultSet visitCreateColumnPolicyStatement(CreateColumnPolicyStmt stmt, ConnectContext context) {
+            ErrorReport.wrapWithRuntimeException(() ->
+                    context.getGlobalStateMgr().getPolicyManager().createPolicy(stmt)
+            );
+            return null;
+        }
+
+        @Override
+        public ShowResultSet visitDropColumnPolicyStatement(DropColumnPolicyStmt statement, ConnectContext context) {
+            return super.visitDropColumnPolicyStatement(statement, context);
+        }
+
+        @Override
+        public ShowResultSet visitAlterColumnPolicyStatement(AlterPolicyStmt statement, ConnectContext context) {
+            return super.visitAlterColumnPolicyStatement(statement, context);
         }
     }
 

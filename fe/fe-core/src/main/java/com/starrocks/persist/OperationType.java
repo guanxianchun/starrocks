@@ -486,9 +486,9 @@ public class OperationType {
     // alter catalog
     public static final short OP_ALTER_CATALOG = 13300;
 
-    public static final short OP_CREATE_COLUMN_POLICY = 14000;
-    public static final short OP_DROP_COLUMN_POLICY = 14001;
-    public static final short OP_ALTER_COLUMN_POLICY = 14002;
+    public static final short OP_CREATE_POLICY = 14000;
+    public static final short OP_DROP_POLICY = 14001;
+    public static final short OP_ALTER_POLICY = 14002;
     /**
      * NOTICE: OperationType cannot use a value exceeding 20000, and an error will be reported if it exceeds
      */

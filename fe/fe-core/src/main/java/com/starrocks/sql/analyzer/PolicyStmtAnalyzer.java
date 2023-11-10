@@ -18,11 +18,18 @@
 package com.starrocks.sql.analyzer;
 
 import com.starrocks.analysis.TableName;
+import com.starrocks.catalog.Database;
+import com.starrocks.catalog.Table;
+import com.starrocks.common.ErrorCode;
+import com.starrocks.common.Pair;
 import com.starrocks.qe.ConnectContext;
+import com.starrocks.server.GlobalStateMgr;
 import com.starrocks.sql.ast.AlterPolicyStmt;
 import com.starrocks.sql.ast.CreatePolicyStmt;
 import com.starrocks.sql.ast.DropPolicyStmt;
 import org.apache.commons.lang3.StringUtils;
+
+import java.util.Optional;
 
 /**
  * @ClassName PolicyStmtAnalyzer
@@ -33,7 +40,15 @@ import org.apache.commons.lang3.StringUtils;
 public class PolicyStmtAnalyzer {
 
     public static void analyze(CreatePolicyStmt statement, ConnectContext context) {
-        setTableName(statement.getTableName(), context);
+        TableName tableName = statement.getTableName();
+        setTableName(tableName, context);
+        Pair<Database, Table> dbTable = checkAndGetDatabaseTable(tableName, context);
+        // 检查策略是否存在
+        if (!statement.isOverwrite() && GlobalStateMgr.getCurrentState().getPolicyManager().existPolicy(dbTable.first.getId(),
+                dbTable.second.getId(), statement.getPolicyType(), statement.getPolicyName(), statement.getUser())) {
+            throw new SemanticException(ErrorCode.ERR_POLICY_EXISTS.formatErrorMsg(statement.getPolicyName()));
+        }
+
     }
 
     public static void analyze(DropPolicyStmt statement, ConnectContext context) {
@@ -41,7 +56,30 @@ public class PolicyStmtAnalyzer {
     }
 
     public static void analyze(AlterPolicyStmt statement, ConnectContext context) {
-        setTableName(statement.getTableName(), context);
+        TableName tableName = statement.getTableName();
+        setTableName(tableName, context);
+        Pair<Database, Table> dbTable = checkAndGetDatabaseTable(tableName, context);
+        if (!GlobalStateMgr.getCurrentState().getPolicyManager().existPolicy(dbTable.first.getId(),
+                dbTable.second.getId(), statement.getPolicyType(), statement.getPolicyName(), null)) {
+            throw new SemanticException(ErrorCode.ERR_POLICY_NOT_EXISTS.formatErrorMsg(statement.getPolicyName()));
+        }
+    }
+
+    /**
+     * 检查数据库和表是否存在，存在则返回数据库和表
+     *
+     * @param tableName
+     * @param context
+     * @return
+     */
+    private static Pair<Database, Table> checkAndGetDatabaseTable(TableName tableName, ConnectContext context) {
+
+        // 检查数据库/表是否存在
+        Database database = Optional.ofNullable(GlobalStateMgr.getCurrentState().getDb(tableName.getDb()))
+                .orElseThrow(() -> new SemanticException(ErrorCode.ERR_BAD_DB_ERROR.formatErrorMsg(tableName.getDb())));
+        Table table = Optional.ofNullable(database.getTable(tableName.getTbl()))
+                .orElseThrow(() -> new SemanticException(ErrorCode.ERR_BAD_TABLE_ERROR.formatErrorMsg(tableName.getTbl())));
+        return new Pair<>(database, table);
     }
 
     private static void setTableName(TableName tableName, ConnectContext context) {

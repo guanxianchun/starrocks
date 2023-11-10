@@ -23,7 +23,6 @@ import com.starrocks.catalog.Database;
 import com.starrocks.catalog.Table;
 import com.starrocks.common.ErrorCode;
 import com.starrocks.common.UserException;
-import com.starrocks.policy.ColumnPolicy;
 import com.starrocks.policy.Policy;
 import com.starrocks.policy.PolicyType;
 import com.starrocks.server.GlobalStateMgr;
@@ -54,7 +53,7 @@ public final class CreateColumnPolicyStmt extends CreatePolicyStmt {
         Table table = Optional.ofNullable(database.getTable(tableName.getTbl()))
                 .orElseThrow(() -> new ArithmeticException(ErrorCode.ERR_BAD_TABLE_ERROR.formatErrorMsg(tableName.getTbl())));
         user.analyze();
-        return new ColumnPolicy(database.getId(), table.getId(), PolicyType.COLUMN, policyName, user,
+        return new Policy(database.getId(), table.getId(), PolicyType.COLUMN, policyName, user,
                 columnMaskFunctionMap, origStmt.originStmt);
     }
 

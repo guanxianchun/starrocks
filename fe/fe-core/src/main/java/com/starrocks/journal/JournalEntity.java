@@ -126,7 +126,6 @@ import com.starrocks.persist.UserPrivilegeCollectionInfo;
 import com.starrocks.persist.gson.GsonUtils;
 import com.starrocks.plugin.PluginInfo;
 import com.starrocks.policy.Policy;
-import com.starrocks.policy.PolicyType;
 import com.starrocks.qe.SessionVariable;
 import com.starrocks.scheduler.Task;
 import com.starrocks.scheduler.mv.MVEpoch;
@@ -1039,8 +1038,8 @@ public class JournalEntity implements Writable {
                 data = StorageVolume.read(in);
                 isRead = true;
                 break;
-            case OperationType.OP_ALTER_COLUMN_POLICY:
-                data = Policy.read(in, PolicyType.COLUMN);
+            case OperationType.OP_ALTER_POLICY:
+                data = Policy.read(in);
                 isRead = true;
                 break;
             default: {

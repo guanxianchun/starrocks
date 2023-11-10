@@ -81,7 +81,6 @@ import com.starrocks.metric.MetricRepo;
 import com.starrocks.persist.gson.GsonUtils;
 import com.starrocks.plugin.PluginInfo;
 import com.starrocks.policy.Policy;
-import com.starrocks.policy.PolicyType;
 import com.starrocks.privilege.RolePrivilegeCollectionV2;
 import com.starrocks.privilege.UserPrivilegeCollectionV2;
 import com.starrocks.qe.SessionVariable;
@@ -117,7 +116,6 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutionException;
@@ -1080,7 +1078,7 @@ public class EditLog {
                     globalStateMgr.getStorageVolumeMgr().replayDropStorageVolume(log);
                     break;
                 }
-                case OperationType.OP_CREATE_COLUMN_POLICY:
+                case OperationType.OP_CREATE_POLICY:
                     Policy policy = (Policy) journal.getData();
                     globalStateMgr.getPolicyManager().replayCreate(policy);
                     break;
@@ -2063,20 +2061,6 @@ public class EditLog {
     }
 
     public void logCreatePolicy(Policy policy) {
-        if (Objects.requireNonNull(policy.getType()) == PolicyType.COLUMN) {
-            logEdit(OperationType.OP_CREATE_COLUMN_POLICY, policy);
-        }
-    }
-
-    public void logDropPolicy(Policy policy) {
-        if (Objects.requireNonNull(policy.getType()) == PolicyType.COLUMN) {
-            logEdit(OperationType.OP_DROP_COLUMN_POLICY, policy);
-        }
-    }
-
-    public void logAlterPolicy(Policy policy) {
-        if (Objects.requireNonNull(policy.getType()) == PolicyType.COLUMN) {
-            logEdit(OperationType.OP_ALTER_COLUMN_POLICY, policy);
-        }
+        logEdit(OperationType.OP_CREATE_POLICY, policy);
     }
 }

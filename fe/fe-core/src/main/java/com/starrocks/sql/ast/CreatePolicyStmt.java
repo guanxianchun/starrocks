@@ -46,6 +46,10 @@ public abstract class CreatePolicyStmt extends DdlStmt {
         this.user = user;
     }
 
+    public static Policy fromCreateStatement(CreatePolicyStmt stmt) throws UserException {
+        return stmt.createPolicy();
+    }
+
     public String getPolicyName() {
         return policyName;
     }

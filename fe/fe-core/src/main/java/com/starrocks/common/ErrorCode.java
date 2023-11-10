@@ -141,7 +141,7 @@ public enum ErrorCode {
             "data cannot be inserted into table with empty partition. " +
                     "Use `SHOW PARTITIONS FROM %s` to see the currently partitions of this table. "),
     ERR_NO_SUCH_PARTITION(1749, new byte[] {'H', 'Y', '0', '0', '0'}, "partition '%s' doesn't exist"),
-    
+
     // Following is StarRocks's error code, which start from 5000
     ERR_NOT_OLAP_TABLE(5000, new byte[] {'H', 'Y', '0', '0', '0'}, "Table '%s' is not a OLAP table"),
     ERR_WRONG_PROC_PATH(5001, new byte[] {'H', 'Y', '0', '0', '0'}, "Proc path '%s' doesn't exist"),
@@ -326,7 +326,11 @@ public enum ErrorCode {
     ERR_INVALID_PARAMETER(6013, new byte[] {'4', '2', '0', '0', '0'}, "Invalid parameter %s"),
 
     ERR_PRIVILEGE_STORAGE_VOLUME_DENIED(6020, new byte[] {'4', '2', '0', '0', '0'},
-            "Access denied for user '%s' to storage volume '%s' when checking privilege");
+            "Access denied for user '%s' to storage volume '%s' when checking privilege"),
+    ERR_POLICY_EXISTS(7000, new byte[] {'4', '2', '0', '0', '0'},
+            "Policy '%s' has been exists"),
+    ERR_POLICY_NOT_EXISTS(7001, new byte[] {'4', '2', '0', '0', '0'},
+            "Policy '%s' is not exists");
 
     ErrorCode(int code, byte[] sqlState, String errorMsg) {
         this.code = code;

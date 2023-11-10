@@ -23,19 +23,20 @@ import com.google.common.collect.Sets;
 import com.google.gson.annotations.SerializedName;
 import com.starrocks.common.DdlException;
 import com.starrocks.common.UserException;
-import com.starrocks.common.io.Text;
 import com.starrocks.common.io.Writable;
-import com.starrocks.persist.gson.GsonUtils;
+import com.starrocks.persist.metablock.SRMetaBlockEOFException;
+import com.starrocks.persist.metablock.SRMetaBlockException;
+import com.starrocks.persist.metablock.SRMetaBlockReader;
 import com.starrocks.server.GlobalStateMgr;
 import com.starrocks.sql.ast.CreatePolicyStmt;
 import com.starrocks.sql.ast.UserIdentity;
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.DataInput;
+import java.io.DataInputStream;
 import java.io.DataOutput;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Map;
@@ -57,21 +58,21 @@ public class PolicyManager implements Writable {
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
 
     @SerializedName("dbToPolicyMap")
-    private final Map<Long, Set<Policy>> dbToPolicyMap = Maps.newConcurrentMap();
+    private final Map<Long, DataBasePolicy> dataBaseToPolicyMap = Maps.newConcurrentMap();
     /**
      * cache policy for match
      * key: tableId-type
      */
-    private final Map<String, Set<Policy>> tablePolicyMap = Maps.newConcurrentMap();
+    private final Map<String, Set<Policy>> tablePolicyCache = Maps.newConcurrentMap();
     /**
      * cache policy for search
      * key: user-type-tableId
      */
-    private final Map<String, Policy> userTableToPolicyMap = Maps.newConcurrentMap();
+    private final Map<String, Policy> userTablePolicyCache = Maps.newConcurrentMap();
     /**
      * key: user-type
      */
-    private final Set<String> userPolicySet = Sets.newConcurrentHashSet();
+    private final Set<String> userPolicyCache = Sets.newConcurrentHashSet();
 
     private void writeLock() {
         lock.writeLock().lock();
@@ -93,7 +94,7 @@ public class PolicyManager implements Writable {
         Policy policy = Policy.fromCreateStmt(stmt);
         writeLock();
         try {
-            if (existPolicy(policy.getDbId(), policy.getTableId(), policy.getType(),
+            if (existPolicy(policy.getDbId(), policy.getTableId(), policy.getPolicyType(),
                     policy.getPolicyName(), policy.getUser())) {
                 if (!stmt.isOverwrite()) {
                     throw new DdlException("the policy " + policy.getPolicyName() + " already create");
@@ -107,44 +108,47 @@ public class PolicyManager implements Writable {
 
     }
 
-    private boolean existPolicy(long dbId, long tableId, PolicyType type, String policyName, UserIdentity user) {
-        Set<Policy> policies = getDbPolicies(dbId);
-        return policies.stream().anyMatch(policy -> matchPolicy(policy, tableId, type, policyName, user));
-    }
-
-    private boolean matchPolicy(Policy policy, long tableId, PolicyType type, String policyName, UserIdentity user) {
-        return Objects.equals(policy.getTableId(), tableId)
-                && policy.getType().equals(type)
-                && StringUtils.equals(policy.getPolicyName(), policyName)
-                && StringUtils.equals(policy.getUser().getUser(), user.getUser());
+    public boolean existPolicy(long dbId, long tableId, PolicyType policyType, String policyName, UserIdentity user) {
+        DataBasePolicy dataBasePolicy = getDbPolicies(dbId);
+        return dataBasePolicy.existPolicy(tableId, policyType, policyName, user);
     }
 
     @Override
     public void write(DataOutput out) throws IOException {
-        Text.writeString(out, GsonUtils.GSON.toJson(this));
+        int numbers = dataBaseToPolicyMap.size();
+        out.writeInt(numbers);
+        for (Map.Entry<Long, DataBasePolicy> entry : dataBaseToPolicyMap.entrySet()) {
+            entry.getValue().write(out);
+        }
+        LOG.info("write all policy success.");
     }
 
     /**
      * Read policyMgr from file.
      **/
     public static PolicyManager read(DataInput in) throws IOException {
-        String json = Text.readString(in);
-        PolicyManager policyManager = GsonUtils.GSON.fromJson(json, PolicyManager.class);
+        int numbers = in.readInt();
+        PolicyManager policyManager = new PolicyManager();
+        for (int i = 0; i < numbers; i++) {
+            DataBasePolicy dataBasePolicy = DataBasePolicy.read(in);
+            policyManager.dataBaseToPolicyMap.put(dataBasePolicy.getDbId(), dataBasePolicy);
+        }
         // update merge policy cache and userPolicySet
-        policyManager.updateMergeTablePolicyMap();
+        policyManager.updatePolicyCache();
+        LOG.info("load all policy success.");
         return policyManager;
     }
 
-    private void updateMergeTablePolicyMap() {
-        dbToPolicyMap.forEach((dbId, policies) -> updateMergePolicyMap(dbId));
+    private void updatePolicyCache() {
+        dataBaseToPolicyMap.forEach((dbId, policies) -> updatePolicyCache(dbId));
     }
 
-    public void updateMergePolicyMap(Long dbId) {
-        Set<Policy> policies = dbToPolicyMap.get(dbId);
-        if (CollectionUtils.isEmpty(policies)) {
+    public void updatePolicyCache(Long dbId) {
+        DataBasePolicy dataBasePolicy = dataBaseToPolicyMap.get(dbId);
+        if (Objects.isNull(dataBasePolicy)) {
             return;
         }
-        policies.forEach(policy -> {
+        dataBasePolicy.getPolicies().forEach(policy -> {
             updateTablePolicyCache(policy);
             updateUserTablePolicyCache(policy);
             updateUserPolicyCache(policy);
@@ -152,8 +156,8 @@ public class PolicyManager implements Writable {
     }
 
     public void updateUserTablePolicyCache(Policy policy) {
-        String key = Joiner.on("-").join(policy.getUser().getUser(), policy.getType(), policy.getTableId());
-        userTableToPolicyMap.put(key, policy);
+        String key = Joiner.on("-").join(policy.getUser().getUser(), policy.getPolicyType(), policy.getTableId());
+        userTablePolicyCache.put(key, policy);
     }
 
     /**
@@ -163,13 +167,13 @@ public class PolicyManager implements Writable {
         if (Objects.isNull(policy)) {
             return;
         }
-        String key = Joiner.on("-").join(policy.getTableId(), policy.getType());
-        Set<Policy> policies = Optional.ofNullable(tablePolicyMap.get(key)).orElse(new HashSet<>());
+        String key = Joiner.on("-").join(policy.getTableId(), policy.getPolicyType());
+        Set<Policy> policies = Optional.ofNullable(tablePolicyCache.get(key)).orElse(new HashSet<>());
         // 处理已经存在的情况，后添加的不能更新
         policies.remove(policy);
         policies.add(policy);
-        if (!tablePolicyMap.containsKey(key)) {
-            tablePolicyMap.put(key, policies);
+        if (!tablePolicyCache.containsKey(key)) {
+            tablePolicyCache.put(key, policies);
         }
     }
 
@@ -177,7 +181,7 @@ public class PolicyManager implements Writable {
      * @param policy
      */
     private void updateUserPolicyCache(Policy policy) {
-        userPolicySet.add(Joiner.on("-").join(policy.getUser().getUser(), policy.getType()));
+        userPolicyCache.add(Joiner.on("-").join(policy.getUser().getUser(), policy.getPolicyType()));
     }
 
     public void replayCreate(Policy policy) {
@@ -190,16 +194,15 @@ public class PolicyManager implements Writable {
             return;
         }
         long dbId = policy.getDbId();
-        Set<Policy> dbPolicies = getDbPolicies(dbId);
+        DataBasePolicy dataBasePolicy = getDbPolicies(dbId);
         // 更新数据
-        dbPolicies.remove(policy);
-        dbPolicies.add(policy);
+        dataBasePolicy.addPolicy(policy);
         // 更新缓存
         updateTablePolicyCache(policy);
     }
 
-    public Set<Policy> getDbPolicies(long dbId) {
-        return dbToPolicyMap.get(dbId);
+    public DataBasePolicy getDbPolicies(long dbId) {
+        return dataBaseToPolicyMap.get(dbId);
     }
 
     /**
@@ -211,7 +214,7 @@ public class PolicyManager implements Writable {
      */
     public Set<Policy> getTablePolicy(Long tableId, PolicyType policyType) {
         String key = Joiner.on("-").join(tableId, policyType);
-        return tablePolicyMap.get(key);
+        return tablePolicyCache.get(key);
     }
 
     /**
@@ -223,7 +226,7 @@ public class PolicyManager implements Writable {
      * @return
      */
     public Policy getPolicy(String user, PolicyType policyType, Long tableId) {
-        return userTableToPolicyMap.get(Joiner.on("-").join(user, policyType, tableId));
+        return userTablePolicyCache.get(Joiner.on("-").join(user, policyType, tableId));
     }
 
     /**
@@ -234,7 +237,7 @@ public class PolicyManager implements Writable {
      * @return
      */
     public boolean hasPolicy(String user, PolicyType policyType) {
-        return userPolicySet.contains(Joiner.on("-").join(user, policyType));
+        return userPolicyCache.contains(Joiner.on("-").join(user, policyType));
     }
 
     /**
@@ -242,15 +245,13 @@ public class PolicyManager implements Writable {
      *
      * @param dbId
      */
-    public void dropPolicy(Long dbId) {
-        Set<Policy> policies = dbToPolicyMap.get(dbId);
-        if (CollectionUtils.isEmpty(policies)) {
+    public synchronized void dropPolicy(Long dbId) {
+        DataBasePolicy dataBasePolicy = dataBaseToPolicyMap.get(dbId);
+        if (dataBasePolicy == null) {
             return;
         }
-
-        dbToPolicyMap.remove(dbId);
-
-        policies.forEach(policy -> {
+        dataBaseToPolicyMap.remove(dbId);
+        dataBasePolicy.getPolicies().forEach(policy -> {
             removeFromTablePolicyCache(policy);
             removeFromUserTablePolicyCache(policy);
             removeFromUserPolicyCache(policy);
@@ -263,17 +264,17 @@ public class PolicyManager implements Writable {
      * @param dbId
      * @param tableId
      */
-    public void dropPolicy(Long dbId, Long tableId) {
+    public synchronized void dropPolicy(Long dbId, Long tableId) {
         // 获取数据库所有的策略
-        Set<Policy> policies = dbToPolicyMap.get(dbId);
-        if (CollectionUtils.isEmpty(policies)) {
+        DataBasePolicy dataBasePolicy = dataBaseToPolicyMap.get(dbId);
+        if (dataBasePolicy == null) {
             return;
         }
         // 获取表所有的策略
-        Set<Policy> deletePolicies = policies.stream()
+        Set<Policy> deletePolicies = dataBasePolicy.getPolicies().stream()
                 .filter(policy -> Objects.equals(tableId, policy.getTableId())).collect(Collectors.toSet());
         // 将表的策略从该数据库策略中删除
-        policies.removeAll(deletePolicies);
+        dataBasePolicy.removeAll(deletePolicies);
         // 删除缓存
         deletePolicies.forEach(policy -> {
             removeFromTablePolicyCache(policy);
@@ -288,7 +289,7 @@ public class PolicyManager implements Writable {
      * @param policy
      */
     private void removeFromTablePolicyCache(Policy policy) {
-        tablePolicyMap.remove(Joiner.on("-").join(policy.getTableId(), policy.getType()));
+        tablePolicyCache.remove(Joiner.on("-").join(policy.getTableId(), policy.getPolicyType()));
     }
 
     /**
@@ -297,8 +298,8 @@ public class PolicyManager implements Writable {
      * @param policy
      */
     private void removeFromUserTablePolicyCache(Policy policy) {
-        userTableToPolicyMap.remove(Joiner.on("-").join(policy.getUser().getUser(),
-                policy.getType(), policy.getTableId()));
+        userTablePolicyCache.remove(Joiner.on("-").join(policy.getUser().getUser(),
+                policy.getPolicyType(), policy.getTableId()));
     }
 
     /**
@@ -307,6 +308,38 @@ public class PolicyManager implements Writable {
      * @param policy
      */
     private void removeFromUserPolicyCache(Policy policy) {
-        userPolicySet.remove(Joiner.on("-").join(policy.getUser(), policy.getType()));
+        userPolicyCache.remove(Joiner.on("-").join(policy.getUser(), policy.getPolicyType()));
+    }
+
+    public synchronized long savePolicies(DataOutputStream dos, long checksum) throws IOException {
+        int numbers = dataBaseToPolicyMap.size();
+        checksum ^= numbers;
+        write(dos);
+        return checksum;
+    }
+
+    public void save(DataOutputStream dos) throws IOException {
+        write(dos);
+        LOG.info("save PolicyManager success to image.");
+    }
+
+    public void load(SRMetaBlockReader reader) throws SRMetaBlockEOFException, IOException, SRMetaBlockException {
+        int numbers = reader.readInt();
+        for (int i = 0; i < numbers; i++) {
+            DataBasePolicy dataBasePolicy = DataBasePolicy.load(reader);
+            this.dataBaseToPolicyMap.put(dataBasePolicy.getDbId(), dataBasePolicy);
+        }
+        LOG.info("load PolicyManager success from image.");
+    }
+
+    public long loadPolicies(DataInputStream dis, long checksum) throws IOException {
+        int numbers = dis.readInt();
+        checksum ^= numbers;
+        for (int i = 0; i < numbers; i++) {
+            DataBasePolicy dataBasePolicy = DataBasePolicy.loadPolicies(dis);
+            this.dataBaseToPolicyMap.put(dataBasePolicy.getDbId(), dataBasePolicy);
+        }
+        LOG.info("load PolicyManager success from image.");
+        return checksum;
     }
 }
