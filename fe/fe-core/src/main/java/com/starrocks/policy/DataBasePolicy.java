@@ -25,6 +25,8 @@ import com.starrocks.persist.metablock.SRMetaBlockException;
 import com.starrocks.persist.metablock.SRMetaBlockReader;
 import com.starrocks.sql.ast.UserIdentity;
 import org.apache.commons.lang.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.DataInput;
 import java.io.DataInputStream;
@@ -40,6 +42,7 @@ import java.util.Set;
  * @Date 2023/11/10 下午8:28
  */
 public class DataBasePolicy implements Writable {
+    private static final Logger LOG = LogManager.getLogger(DataBasePolicy.class);
     @SerializedName("dbId")
     private Long dbId;
     @SerializedName("policies")
@@ -78,6 +81,7 @@ public class DataBasePolicy implements Writable {
         for (Policy policy : policies) {
             policy.write(out);
         }
+        LOG.info("save db policy success, db: {}, policies: {}", dbId, numPolicy);
     }
 
     /**

@@ -129,13 +129,17 @@ public class PolicyManager implements Writable {
     public static PolicyManager read(DataInput in) throws IOException {
         int numbers = in.readInt();
         PolicyManager policyManager = new PolicyManager();
-        for (int i = 0; i < numbers; i++) {
-            DataBasePolicy dataBasePolicy = DataBasePolicy.read(in);
-            policyManager.dataBaseToPolicyMap.put(dataBasePolicy.getDbId(), dataBasePolicy);
+        try {
+            for (int i = 0; i < numbers; i++) {
+                DataBasePolicy dataBasePolicy = DataBasePolicy.read(in);
+                policyManager.dataBaseToPolicyMap.put(dataBasePolicy.getDbId(), dataBasePolicy);
+            }
+            // update merge policy cache and userPolicySet
+            policyManager.updatePolicyCache();
+            LOG.info("load all policy success.");
+        } catch (IOException e) {
+            LOG.warn("load all policy failed.", e);
         }
-        // update merge policy cache and userPolicySet
-        policyManager.updatePolicyCache();
-        LOG.info("load all policy success.");
         return policyManager;
     }
 
@@ -144,15 +148,20 @@ public class PolicyManager implements Writable {
     }
 
     public void updatePolicyCache(Long dbId) {
-        DataBasePolicy dataBasePolicy = dataBaseToPolicyMap.get(dbId);
-        if (Objects.isNull(dataBasePolicy)) {
-            return;
+        readLock();
+        try {
+            DataBasePolicy dataBasePolicy = dataBaseToPolicyMap.get(dbId);
+            if (Objects.isNull(dataBasePolicy)) {
+                return;
+            }
+            dataBasePolicy.getPolicies().forEach(policy -> {
+                updateTablePolicyCache(policy);
+                updateUserTablePolicyCache(policy);
+                updateUserPolicyCache(policy);
+            });
+        } finally {
+            readUnlock();
         }
-        dataBasePolicy.getPolicies().forEach(policy -> {
-            updateTablePolicyCache(policy);
-            updateUserTablePolicyCache(policy);
-            updateUserPolicyCache(policy);
-        });
     }
 
     public void updateUserTablePolicyCache(Policy policy) {
@@ -324,22 +333,34 @@ public class PolicyManager implements Writable {
     }
 
     public void load(SRMetaBlockReader reader) throws SRMetaBlockEOFException, IOException, SRMetaBlockException {
-        int numbers = reader.readInt();
-        for (int i = 0; i < numbers; i++) {
-            DataBasePolicy dataBasePolicy = DataBasePolicy.load(reader);
-            this.dataBaseToPolicyMap.put(dataBasePolicy.getDbId(), dataBasePolicy);
+        try {
+            int numbers = reader.readInt();
+            for (int i = 0; i < numbers; i++) {
+                DataBasePolicy dataBasePolicy = DataBasePolicy.load(reader);
+                this.dataBaseToPolicyMap.put(dataBasePolicy.getDbId(), dataBasePolicy);
+                LOG.info("load db policy success, db: {}, policies: {}", dataBasePolicy.getDbId(),
+                        dataBasePolicy.getPolicies().size());
+            }
+            LOG.info("load PolicyManager success from image.");
+        } catch (Exception e) {
+            LOG.warn("load PolicyManager failed from image", e);
         }
-        LOG.info("load PolicyManager success from image.");
     }
 
     public long loadPolicies(DataInputStream dis, long checksum) throws IOException {
-        int numbers = dis.readInt();
-        checksum ^= numbers;
-        for (int i = 0; i < numbers; i++) {
-            DataBasePolicy dataBasePolicy = DataBasePolicy.loadPolicies(dis);
-            this.dataBaseToPolicyMap.put(dataBasePolicy.getDbId(), dataBasePolicy);
+        try {
+            int numbers = dis.readInt();
+            checksum ^= numbers;
+            for (int i = 0; i < numbers; i++) {
+                DataBasePolicy dataBasePolicy = DataBasePolicy.loadPolicies(dis);
+                this.dataBaseToPolicyMap.put(dataBasePolicy.getDbId(), dataBasePolicy);
+                LOG.info("load db policy success, db: {}, policies: {}", dataBasePolicy.getDbId(),
+                        dataBasePolicy.getPolicies().size());
+            }
+            LOG.info("load PolicyManager success from image.");
+        } catch (IOException e) {
+            LOG.warn("load PolicyManager failed from image", e);
         }
-        LOG.info("load PolicyManager success from image.");
         return checksum;
     }
 }
