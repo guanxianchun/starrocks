@@ -1520,7 +1520,6 @@ public class GlobalStateMgr {
                         .put(SRMetaBlockID.MATERIALIZED_VIEW_MGR, MaterializedViewMgr.getInstance()::load)
                         .put(SRMetaBlockID.GLOBAL_FUNCTION_MGR, globalFunctionMgr::load)
                         .put(SRMetaBlockID.STORAGE_VOLUME_MGR, storageVolumeMgr::load)
-                        .put(SRMetaBlockID.POLICY_MGR, policyManager::load)
                         .build();
                 try {
                     loadHeaderV2(dis);

@@ -110,7 +110,7 @@ public class PolicyManager implements Writable {
 
     public boolean existPolicy(long dbId, long tableId, PolicyType policyType, String policyName, UserIdentity user) {
         DataBasePolicy dataBasePolicy = getDbPolicies(dbId);
-        return dataBasePolicy.existPolicy(tableId, policyType, policyName, user);
+        return dataBasePolicy != null && dataBasePolicy.existPolicy(tableId, policyType, policyName, user);
     }
 
     @Override
@@ -204,6 +204,11 @@ public class PolicyManager implements Writable {
         }
         long dbId = policy.getDbId();
         DataBasePolicy dataBasePolicy = getDbPolicies(dbId);
+
+        if (dataBasePolicy == null) {
+            dataBasePolicy = new DataBasePolicy(policy.getDbId());
+            dataBaseToPolicyMap.put(policy.getDbId(), dataBasePolicy);
+        }
         // 更新数据
         dataBasePolicy.addPolicy(policy);
         // 更新缓存

@@ -18,7 +18,6 @@
 package com.starrocks.policy;
 
 import com.google.gson.annotations.SerializedName;
-import com.starrocks.analysis.FunctionCallExpr;
 import com.starrocks.common.UserException;
 import com.starrocks.common.io.Text;
 import com.starrocks.common.io.Writable;
@@ -26,6 +25,8 @@ import com.starrocks.persist.gson.GsonPostProcessable;
 import com.starrocks.persist.gson.GsonUtils;
 import com.starrocks.qe.SessionVariable;
 import com.starrocks.qe.SqlModeHelper;
+import com.starrocks.sql.ast.AddColumnPoliciesClause;
+import com.starrocks.sql.ast.AddColumnPolicyClause;
 import com.starrocks.sql.ast.CreateColumnPolicyStmt;
 import com.starrocks.sql.ast.CreatePolicyStmt;
 import com.starrocks.sql.ast.StatementBase;
@@ -37,7 +38,6 @@ import org.apache.logging.log4j.Logger;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -63,7 +63,7 @@ public class Policy implements Writable, GsonPostProcessable {
     protected boolean enabled = true;
     @SerializedName("originStmt")
     protected String originStmt;
-    protected Map<String, FunctionCallExpr> columnMaskFunctionMap;
+    protected AddColumnPoliciesClause addColumnPoliciesClause;
 
     /**
      * Base class for Policy.
@@ -75,14 +75,14 @@ public class Policy implements Writable, GsonPostProcessable {
      * @param user
      */
     public Policy(Long dbId, Long tableId, PolicyType policyType, String policyName, UserIdentity user,
-                  Map<String, FunctionCallExpr> columnMaskFunctionMap, String originStmt) {
+                  AddColumnPoliciesClause addColumnPoliciesClause, String originStmt) {
         this.dbId = dbId;
         this.tableId = tableId;
         this.policyType = policyType;
         this.policyName = policyName;
         this.user = user;
         this.originStmt = originStmt;
-        this.columnMaskFunctionMap = columnMaskFunctionMap;
+        this.addColumnPoliciesClause = addColumnPoliciesClause;
     }
 
     public static Policy fromCreateStmt(CreatePolicyStmt stmt) throws UserException {
@@ -152,16 +152,24 @@ public class Policy implements Writable, GsonPostProcessable {
     }
 
     private void parserColumnMaskFun() {
-        if (columnMaskFunctionMap != null) {
+        if (addColumnPoliciesClause != null) {
             return;
         }
         CreateColumnPolicyStmt stmt = (CreateColumnPolicyStmt) getStatement();
-        columnMaskFunctionMap = stmt.getColumnMaskFunctionMap();
+        addColumnPoliciesClause = stmt.getAddColumnPoliciesClause();
     }
 
     private StatementBase getStatement() {
         SessionVariable sessionVariable = new SessionVariable();
         sessionVariable.setSqlMode(SqlModeHelper.MODE_DEFAULT);
         return SqlParser.parse(originStmt, sessionVariable).get(0);
+    }
+
+    public AddColumnPoliciesClause getAddColumnPoliciesClause() {
+        return addColumnPoliciesClause;
+    }
+
+    public AddColumnPolicyClause getAddColumnPolicyClause(String columnName) {
+        return addColumnPoliciesClause == null ? null : addColumnPoliciesClause.getColumnPolicyClause(columnName);
     }
 }
