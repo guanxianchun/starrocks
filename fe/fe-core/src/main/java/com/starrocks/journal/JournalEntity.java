@@ -1038,7 +1038,7 @@ public class JournalEntity implements Writable {
                 data = StorageVolume.read(in);
                 isRead = true;
                 break;
-            case OperationType.OP_ALTER_POLICY:
+            case OperationType.OP_CREATE_POLICY:
                 data = Policy.read(in);
                 isRead = true;
                 break;
