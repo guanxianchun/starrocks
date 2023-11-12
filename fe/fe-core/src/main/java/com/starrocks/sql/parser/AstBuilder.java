@@ -100,6 +100,8 @@ import com.starrocks.sql.analyzer.RelationId;
 import com.starrocks.sql.analyzer.SemanticException;
 import com.starrocks.sql.ast.AddBackendClause;
 import com.starrocks.sql.ast.AddColumnClause;
+import com.starrocks.sql.ast.AddColumnPoliciesClause;
+import com.starrocks.sql.ast.AddColumnPolicyClause;
 import com.starrocks.sql.ast.AddColumnsClause;
 import com.starrocks.sql.ast.AddComputeNodeClause;
 import com.starrocks.sql.ast.AddFollowerClause;
@@ -6710,18 +6712,25 @@ public class AstBuilder extends StarRocksBaseVisitor<ParseNode> {
         String policyName = ctx.identifier().getText();
         TableName tableName = qualifiedNameToTableName(getQualifiedName(ctx.qualifiedName()));
         String user = ((StringLiteral) visitUserExpression(ctx.userExpression())).getValue();
-        Map<String, FunctionCallExpr> columnMaskFunMap = getColumnMaskFunctionMap(ctx.addColumnPolicys());
         return new CreateColumnPolicyStmt(policyName, overwrite, tableName,
-                new UserIdentity(user, "%"), columnMaskFunMap);
+                new UserIdentity(user, "%"), (AddColumnPoliciesClause) visitAddColumnPolicys(ctx.addColumnPolicys()));
     }
 
-    private Map<String, FunctionCallExpr> getColumnMaskFunctionMap(StarRocksParser.AddColumnPolicysContext
-                                                                           addColumnPolicysContext) {
-        Map<String, FunctionCallExpr> columnMaskFunMap = Maps.newHashMap();
-        addColumnPolicysContext.addColumnPolicy().forEach(v -> {
-            columnMaskFunMap.put(v.identifier().getText(), (FunctionCallExpr) visitMaskingFunctionCall(v.maskingFunctionCall()));
-        });
-        return columnMaskFunMap;
+    @Override
+    public ParseNode visitAddColumnPolicys(StarRocksParser.AddColumnPolicysContext ctx) {
+        List<StarRocksParser.AddColumnPolicyContext> policyContexts = ctx.addColumnPolicy();
+        List<AddColumnPolicyClause> policyClauses = new ArrayList<>();
+        for (int i = 0; i < policyContexts.size(); i++) {
+            policyClauses.add((AddColumnPolicyClause) visitAddColumnPolicy(policyContexts.get(i)));
+        }
+        return new AddColumnPoliciesClause(policyClauses);
+    }
+
+    @Override
+    public ParseNode visitAddColumnPolicy(StarRocksParser.AddColumnPolicyContext ctx) {
+        String columnName = ctx.identifier().getText();
+        FunctionCallExpr functionExpr = (FunctionCallExpr) visitMaskingFunctionCall(ctx.maskingFunctionCall());
+        return new AddColumnPolicyClause(columnName, functionExpr);
     }
 
     @Override
@@ -6740,8 +6749,15 @@ public class AstBuilder extends StarRocksBaseVisitor<ParseNode> {
     }
 
     @Override
-    public ParseNode visitMaskingFunctionCall(StarRocksParser.MaskingFunctionCallContext ctx) {
-        return super.visitMaskingFunctionCall(ctx);
+    public ParseNode visitMaskingFunctionCall(StarRocksParser.MaskingFunctionCallContext context) {
+        String fullFunctionName = getQualifiedName(context.qualifiedName()).toString();
+        NodePosition pos = createPos(context);
+
+        FunctionName fnName = FunctionName.createFnName(fullFunctionName);
+
+        FunctionCallExpr functionCallExpr = new FunctionCallExpr(fnName,
+                new FunctionParams(false, visit(context.expression(), Expr.class)), pos);
+        return SyntaxSugars.parse(functionCallExpr);
     }
 }
 

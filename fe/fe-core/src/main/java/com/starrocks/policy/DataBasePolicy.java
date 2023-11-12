@@ -24,6 +24,7 @@ import com.starrocks.persist.metablock.SRMetaBlockEOFException;
 import com.starrocks.persist.metablock.SRMetaBlockException;
 import com.starrocks.persist.metablock.SRMetaBlockReader;
 import com.starrocks.sql.ast.UserIdentity;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -116,7 +117,8 @@ public class DataBasePolicy implements Writable {
     }
 
     public boolean existPolicy(long tableId, PolicyType policyType, String policyName, UserIdentity user) {
-        return policies.stream().anyMatch(policy -> matchPolicy(policy, tableId, policyType, policyName, user));
+        return CollectionUtils.isNotEmpty(policies) && policies.stream().anyMatch(
+                policy -> matchPolicy(policy, tableId, policyType, policyName, user));
     }
 
     private boolean matchPolicy(Policy policy, long tableId, PolicyType policyType, String policyName, UserIdentity user) {

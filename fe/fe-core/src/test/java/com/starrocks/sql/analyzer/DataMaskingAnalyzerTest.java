@@ -18,6 +18,7 @@ import com.google.gson.annotations.SerializedName;
 import com.starrocks.persist.gson.GsonUtils;
 import com.starrocks.server.GlobalStateMgr;
 import com.starrocks.sql.analyzer.masking.DataMaskingAnalyzer;
+import com.starrocks.sql.ast.CreateColumnPolicyStmt;
 import com.starrocks.sql.ast.CreateTableStmt;
 import com.starrocks.sql.ast.QueryStatement;
 import com.starrocks.utframe.UtFrameUtils;
@@ -70,6 +71,12 @@ public class DataMaskingAnalyzerTest {
         CreateTableStmt createTableStmt = (CreateTableStmt) UtFrameUtils.parseStmtWithNewParser(sql,
                 AnalyzeTestUtil.getConnectContext());
         GlobalStateMgr.getCurrentState().createTable(createTableStmt);
+    }
+
+    private static void createPolicy(String sql) throws Exception {
+        CreateColumnPolicyStmt createTableStmt = (CreateColumnPolicyStmt) UtFrameUtils.parseStmtWithNewParser(sql,
+                AnalyzeTestUtil.getConnectContext());
+        //GlobalStateMgr.getCurrentState().createTable(createTableStmt);
     }
 
     public void analyzeSql(String sql) {
@@ -186,5 +193,11 @@ public class DataMaskingAnalyzerTest {
             this.age = age;
             return this;
         }
+    }
+
+    @Test
+    public void testCreateColumnPolicy() throws Exception {
+        String sql = "create column policy users_policy on students when (current_user = 'jack') add column age with abs(age);";
+        createPolicy(sql);
     }
 }

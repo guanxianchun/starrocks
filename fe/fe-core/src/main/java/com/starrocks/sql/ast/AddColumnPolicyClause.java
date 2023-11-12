@@ -17,22 +17,42 @@
 
 package com.starrocks.sql.ast;
 
-import com.starrocks.analysis.TableName;
-import com.starrocks.policy.PolicyType;
+import com.starrocks.analysis.FunctionCallExpr;
+import com.starrocks.analysis.ParseNode;
+import com.starrocks.sql.parser.NodePosition;
 
 /**
- * @ClassName DropColumnPolicyStmt
+ * @ClassName AddColumnPolicyStmt
  * @Author guanxianchun
  * @Description
- * @Date 2023/11/7 下午11:43
+ * @Date 2023/11/12 下午12:34
  */
-public class DropColumnPolicyStmt extends DropPolicyStmt {
-    public DropColumnPolicyStmt(String policyName, TableName tableName) {
-        super(policyName, PolicyType.COLUMN, tableName);
+public class AddColumnPolicyClause implements ParseNode {
+    private String columnName;
+    private FunctionCallExpr functionCallExpr;
+
+    public AddColumnPolicyClause(String columnName, FunctionCallExpr functionCallExpr) {
+        this.columnName = columnName;
+        this.functionCallExpr = functionCallExpr;
     }
+
 
     @Override
     public String toSql() {
-        return "";
+        return "ADD COLUMN " + columnName + " " +
+                functionCallExpr.toSqlImpl();
+    }
+
+    @Override
+    public NodePosition getPos() {
+        return NodePosition.ZERO;
+    }
+
+    public String getColumnName() {
+        return columnName;
+    }
+
+    public FunctionCallExpr getFunctionCallExpr() {
+        return functionCallExpr;
     }
 }

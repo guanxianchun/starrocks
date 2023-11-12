@@ -96,4 +96,9 @@ public abstract class AlterPolicyStmt extends DdlStmt {
     public String getNewPolicyName() {
         return newPolicyName;
     }
+
+    @Override
+    public String toSql() {
+        return "";
+    }
 }

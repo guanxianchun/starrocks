@@ -71,4 +71,9 @@ public abstract class CreatePolicyStmt extends DdlStmt {
     }
 
     public abstract Policy createPolicy() throws UserException;
+
+    @Override
+    public String toSql() {
+        return "";
+    }
 }

@@ -17,7 +17,7 @@
 
 package com.starrocks.sql.ast;
 
-import com.starrocks.analysis.FunctionCallExpr;
+import com.google.common.base.Joiner;
 import com.starrocks.analysis.TableName;
 import com.starrocks.catalog.Database;
 import com.starrocks.catalog.Table;
@@ -28,7 +28,6 @@ import com.starrocks.policy.PolicyType;
 import com.starrocks.server.GlobalStateMgr;
 import com.starrocks.sql.parser.NodePosition;
 
-import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -38,12 +37,12 @@ import java.util.Optional;
  * @Date 2023/11/7 下午11:42
  */
 public final class CreateColumnPolicyStmt extends CreatePolicyStmt {
-    private final Map<String, FunctionCallExpr> columnMaskFunctionMap;
+    private AddColumnPoliciesClause addColumnPoliciesClause;
 
     public CreateColumnPolicyStmt(String policyName, boolean overwrite, TableName tableName, UserIdentity user,
-                                  Map<String, FunctionCallExpr> columnMaskFunctionMap) {
+                                  AddColumnPoliciesClause addColumnPoliciesClause) {
         super(NodePosition.ZERO, policyName, PolicyType.COLUMN, overwrite, tableName, user);
-        this.columnMaskFunctionMap = columnMaskFunctionMap;
+        this.addColumnPoliciesClause = addColumnPoliciesClause;
     }
 
     @Override
@@ -54,10 +53,33 @@ public final class CreateColumnPolicyStmt extends CreatePolicyStmt {
                 .orElseThrow(() -> new ArithmeticException(ErrorCode.ERR_BAD_TABLE_ERROR.formatErrorMsg(tableName.getTbl())));
         user.analyze();
         return new Policy(database.getId(), table.getId(), PolicyType.COLUMN, policyName, user,
-                columnMaskFunctionMap, origStmt.originStmt);
+                addColumnPoliciesClause, origStmt.originStmt);
     }
 
-    public Map<String, FunctionCallExpr> getColumnMaskFunctionMap() {
-        return columnMaskFunctionMap;
+    @Override
+    public String toSql() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("CREATE ");
+        if (isOverwrite()) {
+            sb.append(" OR REPLACE ");
+        }
+        sb.append("COLUMN POLICY ").append(policyName).append(" ON ")
+                .append(Joiner.on(".").skipNulls().join(tableName.getCatalog(),
+                        tableName.getDb(), tableName.getTbl()))
+                .append(" WHEN ").append("( CURRENT_USER = ").append(user.toSql()).append(") ");
+
+        if (addColumnPoliciesClause != null) {
+            sb.append(addColumnPoliciesClause.toSql());
+        }
+        return sb.toString();
+    }
+
+    public AddColumnPoliciesClause getAddColumnPoliciesClause() {
+        return addColumnPoliciesClause;
+    }
+
+    @Override
+    public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+        return visitor.visitCreateColumnPolicyStatement(this, context);
     }
 }
